@@ -57,14 +57,19 @@ function ensureLoopParams(params: Record<string, unknown>): void {
 function randomStops(rng: RNG, minL: number, maxL: number): GradientStop[] {
   const n = rng.randInt(3, 7);
   const baseH = rng.random();
-  const spread = rng.range(0.08, 0.6);
+  // 色相变化收敛：多数情况在小色域内做微妙渐变
+  const spread = rng.biased(0.12, 0.08);
   const dir = rng.random() > 0.5 ? 1 : -1;
   const stops: GradientStop[] = [];
   for (let i = 0; i < n; i++) {
+    // 饱和度：以中低饱和为主体，偶有高饱和点缀
+    const baseSat = rng.biased(0.4, 0.15);
+    const accent = rng.random() < 0.15;
+    const s = accent ? rng.range(0.65, 0.85) : Math.max(0.1, Math.min(0.7, baseSat));
     stops.push({
       pos: i / (n - 1),
       h: ((baseH + dir * spread * (i / (n - 1))) % 1 + 1) % 1,
-      s: rng.range(0.5, 1),
+      s,
       l: rng.range(minL, maxL),
     });
   }
@@ -183,7 +188,7 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
   }
 
   // 3. Gradient
-  const gradStops = randomStops(rng, isIcon ? 0.3 : 0.03, isIcon ? 0.75 : 0.15);
+  const gradStops = randomStops(rng, isIcon ? 0.35 : 0.08, isIcon ? 0.7 : 0.25);
   const gradComp = registry.get('col:gradient')!;
   const gradFn = gradComp.create({ stops: gradStops });
   ids.push('col:gradient');
