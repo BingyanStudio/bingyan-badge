@@ -1,4 +1,10 @@
 node_modules
 .temp
 .git
+.github
+.DS_Store
 *.md
+*.log
+src/analyze-color.ts
+src/diagnose-hue.ts
+src/test.ts

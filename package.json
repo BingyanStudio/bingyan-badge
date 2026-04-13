@@ -13,12 +13,12 @@
   "dependencies": {
     "express": "^4.21.0",
     "gif-encoder-2": "^1.0.5",
-    "sharp": "^0.33.0"
+    "sharp": "^0.33.0",
+    "tsx": "^4.19.4"
   },
   "devDependencies": {
     "@types/express": "^5.0.2",
     "@types/node": "^22.15.3",
-    "tsx": "^4.19.4",
     "typescript": "^5.9.3"
   }
 }
