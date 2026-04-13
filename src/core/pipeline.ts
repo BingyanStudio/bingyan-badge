@@ -82,6 +82,10 @@ const SOURCE_WEIGHTS: Record<string, number> = {
   'src:plasma': 5,
   'src:kaleidoscope': 4,
   'src:fractal': 4,
+  'src:reaction-diffusion': 4,
+  'src:flow-field': 4,
+  'src:truchet': 3,
+  'src:cellular': 3,
   'src:moire': 4,
   'src:spiral': 3,
   'src:voronoi': 3,
@@ -113,6 +117,7 @@ const LIGHTING_WEIGHTS: Record<string, number> = {
   'lit:rim': 5,
   'lit:ao': 4,
   'lit:specular': 4,
+  'lit:directional': 4,
   'lit:emboss': 1,
 };
 
@@ -144,7 +149,7 @@ function makeTransformFn(rng: RNG): { id: string; fn: NodeFn<any>; needsSecondIn
   const params = randomizeParams(comp, rng);
   ensureLoopParams(params);
   if (comp.id === 'xf:feedback') params['key'] = 'fb_' + rng.randInt(0, 9);
-  return { id: comp.id, fn: comp.create(params), needsSecondInput: comp.id === 'xf:warp' };
+  return { id: comp.id, fn: comp.create(params), needsSecondInput: comp.id === 'xf:warp' || comp.id === 'xf:displace' };
 }
 
 // ─── 管线组装 ───
@@ -187,11 +192,37 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
     warpNoiseFn = makeSourceFn(registry.get('src:noise')!, rng);
   }
 
-  // 3. Gradient
-  const gradStops = randomStops(rng, isIcon ? 0.35 : 0.08, isIcon ? 0.7 : 0.25);
-  const gradComp = registry.get('col:gradient')!;
-  const gradFn = gradComp.create({ stops: gradStops });
-  ids.push('col:gradient');
+  // 3. Color mapping: gradient (60%), duotone (20%), or palette (20%)
+  let colorMapFn: NodeFn<any>;
+  const colorMapRoll = rng.random();
+  if (colorMapRoll < 0.6) {
+    const gradStops = randomStops(rng, isIcon ? 0.35 : 0.08, isIcon ? 0.7 : 0.25);
+    const gradComp = registry.get('col:gradient')!;
+    colorMapFn = gradComp.create({ stops: gradStops });
+    ids.push('col:gradient');
+  } else if (colorMapRoll < 0.8) {
+    const duoComp = registry.get('col:duotone');
+    if (duoComp) {
+      const duoParams = randomizeParams(duoComp, rng);
+      colorMapFn = duoComp.create(duoParams);
+      ids.push('col:duotone');
+    } else {
+      const gradStops = randomStops(rng, isIcon ? 0.35 : 0.08, isIcon ? 0.7 : 0.25);
+      colorMapFn = registry.get('col:gradient')!.create({ stops: gradStops });
+      ids.push('col:gradient');
+    }
+  } else {
+    const palComp = registry.get('col:palette');
+    if (palComp) {
+      const palParams = randomizeParams(palComp, rng);
+      colorMapFn = palComp.create(palParams);
+      ids.push('col:palette');
+    } else {
+      const gradStops = randomStops(rng, isIcon ? 0.35 : 0.08, isIcon ? 0.7 : 0.25);
+      colorMapFn = registry.get('col:gradient')!.create({ stops: gradStops });
+      ids.push('col:gradient');
+    }
+  }
 
   // 4. Maybe subtle lighting (25% icon, 10% bg)
   let litFn: NodeFn<any> | null = null;
@@ -262,7 +293,7 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
       }
 
       // Gradient
-      let color = gradFn(ctx, field) as ColorField;
+      let color = colorMapFn(ctx, field) as ColorField;
 
       // Subtle lighting
       if (litFn) {
