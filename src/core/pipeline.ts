@@ -86,6 +86,7 @@ const SOURCE_WEIGHTS: Record<string, number> = {
   'src:plasma': 5,
   'src:kaleidoscope': 4,
   'src:fractal': 4,
+  'src:brush-noise': 4,
   'src:reaction-diffusion': 4,
   'src:flow-field': 4,
   'src:truchet': 3,
@@ -250,17 +251,25 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
     ids.push('col:hsl-shift');
   }
 
-  // 6. Maybe color transform: chromatic aberration, vignette (30%)
-  let colXfFn: NodeFn<any> | null = null;
-  if (rng.random() < 0.3) {
-    const colXfComps = registry.listByType(ComponentType.COLOR_TRANSFORM)
-      .filter(c => c.id !== 'col:light-apply');
-    if (colXfComps.length > 0) {
-      const colXfComp = rng.pick(colXfComps);
-      const colXfParams = randomizeParams(colXfComp, rng);
-      ensureLoopParams(colXfParams);
-      colXfFn = colXfComp.create(colXfParams);
-      ids.push(colXfComp.id);
+  // 6. Color transforms: 可叠加多层（impasto, watercolor, chromatic, vignette）
+  const colXfFns: NodeFn<any>[] = [];
+  const colXfPool = registry.listByType(ComponentType.COLOR_TRANSFORM)
+    .filter(c => c.id !== 'col:light-apply' && c.id !== 'col:hsl-shift');
+  // 第一层 45% 概率
+  if (rng.random() < 0.45 && colXfPool.length > 0) {
+    const comp = rng.pick(colXfPool);
+    const params = randomizeParams(comp, rng);
+    ensureLoopParams(params);
+    colXfFns.push(comp.create(params));
+    ids.push(comp.id);
+    // 第二层 25% 概率（不同类型）
+    const remaining = colXfPool.filter(c => c.id !== comp.id);
+    if (rng.random() < 0.25 && remaining.length > 0) {
+      const comp2 = rng.pick(remaining);
+      const params2 = randomizeParams(comp2, rng);
+      ensureLoopParams(params2);
+      colXfFns.push(comp2.create(params2));
+      ids.push(comp2.id);
     }
   }
 
@@ -320,9 +329,9 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
         color = hslFn(ctx, color) as ColorField;
       }
 
-      // Color transform (chromatic, vignette)
-      if (colXfFn) {
-        color = colXfFn(ctx, color) as ColorField;
+      // Color transforms (impasto, watercolor, chromatic, vignette)
+      for (const fn of colXfFns) {
+        color = fn(ctx, color) as ColorField;
       }
 
       return color;
