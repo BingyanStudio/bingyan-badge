@@ -1,19 +1,16 @@
-// 管线构建器：从组件注册表中随机抽取节点，随机连接，生成效果
+// 管线构建器：从组件注册表中随机抽取节点、随机接线
 //
-// 不再使用模板 recipe，而是按以下规则动态组装：
+// Icon/BG 管线结构（每一步都由 RNG 决定是否包含、用什么组件）：
 //
-// Icon 管线：
-//   1. 抽一个 SOURCE 作为基底纹理（sdf / arc / noise / voronoi / fractal / kaleidoscope）
-//   2. 可能叠加一个 TRANSFORM（warp / quantize / edge / feedback）
-//   3. 用 COLOR gradient 映射为颜色
-//   4. 可能叠加一个 LIGHTING 做光照调制（emboss / specular / rim / ao）
-//   5. 可能做一个 COLOR_TRANSFORM 色彩后处理（hsl-shift）
+//   source_A ──┐
+//              ├─ [blend] → [transform chain] → gradient → [subtle lighting] → [hsl-shift]
+//   source_B ──┘
 //
-// BG 管线：同样的结构，但用不同的参数范围（偏暗）
-//
-// Mask 管线：保留简单的 4 选 1
-//
-// "可能" = 由 RNG 决定是否添加该步骤
+// 关键设计：
+// - 可以有 1 或 2 个 source，2 个时用 combiner 混合
+// - transform chain 可以有 0~3 步
+// - lighting 只有 30% 概率，且强度降低，不再主导画面
+// - 纹理生成器（domain-warp, plasma, kaleidoscope, fractal）占大头
 
 import { registry } from './registry.js';
 import { ScalarField, ColorField } from './fields.js';
@@ -28,55 +25,26 @@ export interface Pipeline {
 }
 
 export interface PipelineDesc {
-  icon: string[];   // 用到的组件 id 列表
+  icon: string[];
   bg: string[];
   mask: string;
 }
 
-// ─── 参数随机化 ───
+// ─── 工具函数 ───
 
 function randomizeParams(comp: Component, rng: RNG): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, def] of Object.entries(comp.params)) {
     switch (def.type) {
-      case 'float':
-        result[key] = rng.range(def.min ?? 0, def.max ?? 1);
-        break;
-      case 'int':
-        result[key] = rng.randInt(def.min ?? 0, def.max ?? 10);
-        break;
-      case 'enum':
-        result[key] = rng.pick(def.options ?? []);
-        break;
-      case 'stops':
-        // 由调用方单独处理
-        break;
+      case 'float': result[key] = rng.range(def.min ?? 0, def.max ?? 1); break;
+      case 'int': result[key] = rng.randInt(def.min ?? 0, def.max ?? 10); break;
+      case 'enum': result[key] = rng.pick(def.options ?? []); break;
     }
   }
   return result;
 }
 
-function randomStops(rng: RNG, minL: number, maxL: number): GradientStop[] {
-  const n = rng.randInt(3, 7);
-  const baseH = rng.random();
-  const hueSpread = rng.range(0.08, 0.5);
-  const dir = rng.random() > 0.5 ? 1 : -1;
-  const stops: GradientStop[] = [];
-  for (let i = 0; i < n; i++) {
-    stops.push({
-      pos: i / (n - 1),
-      h: ((baseH + dir * hueSpread * (i / (n - 1))) % 1 + 1) % 1,
-      s: rng.range(0.55, 1),
-      l: rng.range(minL, maxL),
-    });
-  }
-  return stops;
-}
-
-// ─── 动态管线组装 ───
-
-// 需要循环保证的频率参数名
-const LOOP_FREQ_KEYS = new Set(['freq', 'pulseFreq', 'rotateSpeed', 'scrollSpeed']);
+const LOOP_FREQ_KEYS = new Set(['freq', 'pulseFreq', 'rotateSpeed', 'scrollSpeed', 'speed', 'animate']);
 
 function ensureLoopParams(params: Record<string, unknown>): void {
   for (const key of LOOP_FREQ_KEYS) {
@@ -86,33 +54,72 @@ function ensureLoopParams(params: Record<string, unknown>): void {
   }
 }
 
-/** 从注册表中随机选一个指定类型的组件，随机化参数，返回 NodeFn */
-function pickComponent(type: ComponentType, rng: RNG, overrides?: Record<string, unknown>): { id: string; fn: NodeFn<any> } {
-  const comps = registry.listByType(type);
-  if (!comps.length) throw new Error(`No components of type ${type}`);
-  const comp = rng.pick(comps);
-  const params = { ...randomizeParams(comp, rng), ...overrides };
-  ensureLoopParams(params);
-
-  // gradient 需要 stops 参数
-  if (params['stops'] === undefined && comp.id === 'col:gradient') {
-    params['stops'] = randomStops(rng, 0.35, 0.7);
+function randomStops(rng: RNG, minL: number, maxL: number): GradientStop[] {
+  const n = rng.randInt(3, 7);
+  const baseH = rng.random();
+  const spread = rng.range(0.08, 0.6);
+  const dir = rng.random() > 0.5 ? 1 : -1;
+  const stops: GradientStop[] = [];
+  for (let i = 0; i < n; i++) {
+    stops.push({
+      pos: i / (n - 1),
+      h: ((baseH + dir * spread * (i / (n - 1))) % 1 + 1) % 1,
+      s: rng.range(0.5, 1),
+      l: rng.range(minL, maxL),
+    });
   }
-
-  return { id: comp.id, fn: comp.create(params) };
+  return stops;
 }
 
-/** 指定 id 的组件 */
-function useComponent(id: string, rng: RNG, overrides?: Record<string, unknown>): NodeFn<any> {
-  const comp = registry.get(id);
-  if (!comp) throw new Error(`Component ${id} not found`);
-  const params = { ...randomizeParams(comp, rng), ...overrides };
-  ensureLoopParams(params);
-  if (params['stops'] === undefined && id === 'col:gradient') {
-    params['stops'] = randomStops(rng, 0.35, 0.7);
+// 优质纹理源权重更高
+const SOURCE_WEIGHTS: Record<string, number> = {
+  'src:domain-warp': 5,
+  'src:plasma': 5,
+  'src:kaleidoscope': 4,
+  'src:fractal': 4,
+  'src:moire': 4,
+  'src:spiral': 3,
+  'src:voronoi': 3,
+  'src:noise': 3,
+  'src:sdf': 1,
+  'src:arc': 1,
+  'src:radial': 1,
+  'src:mask': 0, // 不作为主纹理源
+  'src:time': 0, // 不作为主纹理源
+};
+
+function pickWeightedSource(rng: RNG): Component {
+  const sources = registry.listByType(ComponentType.SOURCE);
+  const weighted: { comp: Component; w: number }[] = [];
+  for (const c of sources) {
+    const w = SOURCE_WEIGHTS[c.id] ?? 1;
+    if (w > 0) weighted.push({ comp: c, w });
   }
+  const total = weighted.reduce((s, e) => s + e.w, 0);
+  let r = rng.random() * total;
+  for (const e of weighted) {
+    r -= e.w;
+    if (r <= 0) return e.comp;
+  }
+  return weighted[weighted.length - 1]!.comp;
+}
+
+function makeSourceFn(comp: Component, rng: RNG): NodeFn<any> {
+  const params = randomizeParams(comp, rng);
+  ensureLoopParams(params);
   return comp.create(params);
 }
+
+function makeTransformFn(rng: RNG): { id: string; fn: NodeFn<any>; needsSecondInput: boolean } {
+  const xfs = registry.listByType(ComponentType.TRANSFORM);
+  const comp = rng.pick(xfs);
+  const params = randomizeParams(comp, rng);
+  ensureLoopParams(params);
+  if (comp.id === 'xf:feedback') params['key'] = 'fb_' + rng.randInt(0, 9);
+  return { id: comp.id, fn: comp.create(params), needsSecondInput: comp.id === 'xf:warp' };
+}
+
+// ─── 管线组装 ───
 
 type BuiltChain = {
   ids: string[];
@@ -123,112 +130,118 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
   const ids: string[] = [];
   const isIcon = kind === 'icon';
 
-  // 1. Source
-  const src = pickComponent(ComponentType.SOURCE, rng);
-  ids.push(src.id);
+  // 1. Pick 1 or 2 sources
+  const srcA = pickWeightedSource(rng);
+  const srcAFn = makeSourceFn(srcA, rng);
+  ids.push(srcA.id);
 
-  // 2. Maybe transform (50% chance, 30% for bg)
-  let xfFn: NodeFn<any> | null = null;
-  let xfId: string | null = null;
-  if (rng.random() < (isIcon ? 0.5 : 0.3)) {
-    // 排除 feedback 在背景上（不需要帧间状态）
-    const xfComps = registry.listByType(ComponentType.TRANSFORM)
-      .filter(c => isIcon || c.id !== 'xf:feedback');
-    if (xfComps.length) {
-      const xfComp = rng.pick(xfComps);
-      const xfParams = randomizeParams(xfComp, rng);
-      ensureLoopParams(xfParams);
-      if (xfComp.id === 'xf:feedback') {
-        xfParams['key'] = 'fb_' + kind;
-      }
-      xfFn = xfComp.create(xfParams);
-      xfId = xfComp.id;
-      ids.push(xfId);
-    }
+  let srcBFn: NodeFn<any> | null = null;
+  let blendMode: string | null = null;
+  if (rng.random() < (isIcon ? 0.4 : 0.25)) {
+    const srcB = pickWeightedSource(rng);
+    srcBFn = makeSourceFn(srcB, rng);
+    blendMode = rng.pick(['add', 'mul', 'screen', 'overlay', 'max']);
+    ids.push('+' + srcB.id, 'blend:' + blendMode);
   }
 
-  // warp 需要第二个输入（噪声），准备一个
+  // 2. Transform chain: 0~3 steps for icon, 0~1 for bg
+  const maxXf = isIcon ? rng.randInt(0, 3) : rng.randInt(0, 1);
+  const xfSteps: { id: string; fn: NodeFn<any>; needsSecondInput: boolean }[] = [];
+  for (let i = 0; i < maxXf; i++) {
+    const step = makeTransformFn(rng);
+    xfSteps.push(step);
+    ids.push(step.id);
+  }
+
+  // Prepare warp noise source if needed
   let warpNoiseFn: NodeFn<any> | null = null;
-  if (xfId === 'xf:warp') {
-    warpNoiseFn = useComponent('src:noise', rng);
-    ids.push('src:noise(warp)');
+  if (xfSteps.some(s => s.needsSecondInput)) {
+    warpNoiseFn = makeSourceFn(registry.get('src:noise')!, rng);
   }
 
-  // 3. Gradient color mapping
-  const gradStops = randomStops(rng, isIcon ? 0.35 : 0.03, isIcon ? 0.72 : 0.15);
-  const gradFn = useComponent('col:gradient', rng, { stops: gradStops });
+  // 3. Gradient
+  const gradStops = randomStops(rng, isIcon ? 0.3 : 0.03, isIcon ? 0.75 : 0.15);
+  const gradComp = registry.get('col:gradient')!;
+  const gradFn = gradComp.create({ stops: gradStops });
   ids.push('col:gradient');
 
-  // 4. Maybe lighting (60% for icon, 25% for bg)
+  // 4. Maybe subtle lighting (30% icon, 15% bg)
   let litFn: NodeFn<any> | null = null;
-  if (rng.random() < (isIcon ? 0.6 : 0.25)) {
-    const lit = pickComponent(ComponentType.LIGHTING, rng);
-    litFn = lit.fn;
-    ids.push(lit.id);
+  let litIntensity = 0;
+  if (rng.random() < (isIcon ? 0.3 : 0.15)) {
+    const litComps = registry.listByType(ComponentType.LIGHTING);
+    const litComp = rng.pick(litComps);
+    const litParams = randomizeParams(litComp, rng);
+    ensureLoopParams(litParams);
+    litFn = litComp.create(litParams);
+    litIntensity = rng.range(0.15, 0.4); // 光照强度上限，不再主导画面
+    ids.push(litComp.id + '(subtle)');
   }
 
-  // 5. Maybe hsl-shift (30% chance)
+  // 5. Maybe hsl-shift (35%)
   let hslFn: NodeFn<any> | null = null;
-  if (rng.random() < 0.3) {
-    hslFn = useComponent('col:hsl-shift', rng);
+  if (rng.random() < 0.35) {
+    const hslComp = registry.get('col:hsl-shift')!;
+    const hslParams = randomizeParams(hslComp, rng);
+    ensureLoopParams(hslParams);
+    hslFn = hslComp.create(hslParams);
     ids.push('col:hsl-shift');
-  }
-
-  // 6. Maybe specular on top (40% for icon, skip for bg)
-  let specFn: NodeFn<any> | null = null;
-  let specIntensity = 0;
-  if (isIcon && rng.random() < 0.4) {
-    specFn = useComponent('lit:specular', rng);
-    specIntensity = rng.range(0.2, 0.6);
-    ids.push('lit:specular(top)');
   }
 
   return {
     ids,
     run(ctx: PipelineContext): ColorField {
-      // source
-      let field = src.fn(ctx) as ScalarField;
+      // Sources
+      let field = srcAFn(ctx) as ScalarField;
+      if (srcBFn && blendMode) {
+        const fieldB = srcBFn(ctx) as ScalarField;
+        const blended = new ScalarField(field.width, field.height);
+        for (let i = 0; i < field.data.length; i++) {
+          const a = field.data[i]!, b = fieldB.data[i]!;
+          switch (blendMode) {
+            case 'add': blended.data[i] = Math.min(1, a + b); break;
+            case 'mul': blended.data[i] = a * b; break;
+            case 'screen': blended.data[i] = 1 - (1 - a) * (1 - b); break;
+            case 'overlay': blended.data[i] = a < 0.5 ? 2 * a * b : 1 - 2 * (1 - a) * (1 - b); break;
+            case 'max': blended.data[i] = Math.max(a, b); break;
+            default: blended.data[i] = (a + b) / 2;
+          }
+        }
+        field = blended;
+      }
 
-      // transform
-      if (xfFn) {
-        if (xfId === 'xf:warp' && warpNoiseFn) {
+      // Transforms
+      for (const step of xfSteps) {
+        if (step.needsSecondInput && warpNoiseFn) {
           const noise = warpNoiseFn(ctx) as ScalarField;
-          field = xfFn(ctx, field, noise) as ScalarField;
+          field = step.fn(ctx, field, noise) as ScalarField;
         } else {
-          field = xfFn(ctx, field) as ScalarField;
+          field = step.fn(ctx, field) as ScalarField;
         }
       }
 
-      // gradient
+      // Gradient
       let color = gradFn(ctx, field) as ColorField;
 
-      // lighting (multiplicative)
+      // Subtle lighting
       if (litFn) {
         const litField = litFn(ctx) as ScalarField;
         const c = new ColorField(color.width, color.height);
         for (let i = 0; i < color.r.length; i++) {
           const l = litField.data[i]!;
-          c.r[i] = color.r[i]! * (l * 0.7 + 0.3);
-          c.g[i] = color.g[i]! * (l * 0.7 + 0.3);
-          c.b[i] = color.b[i]! * (l * 0.7 + 0.3);
+          // 只用 litIntensity 比例做调制，其余保持原色
+          const mix = litIntensity;
+          const lit = l * mix + (1 - mix);
+          c.r[i] = color.r[i]! * lit;
+          c.g[i] = color.g[i]! * lit;
+          c.b[i] = color.b[i]! * lit;
         }
         color = c;
       }
 
-      // hsl shift
+      // HSL shift
       if (hslFn) {
         color = hslFn(ctx, color) as ColorField;
-      }
-
-      // specular (additive highlight)
-      if (specFn) {
-        const specField = specFn(ctx) as ScalarField;
-        for (let i = 0; i < color.r.length; i++) {
-          const s = specField.data[i]! * specIntensity;
-          color.r[i] = Math.min(1, color.r[i]! + s);
-          color.g[i] = Math.min(1, color.g[i]! + s);
-          color.b[i] = Math.min(1, color.b[i]! + s);
-        }
       }
 
       return color;
@@ -244,7 +257,6 @@ function buildMask(rng: RNG): { id: string; fn: NodeFn<ScalarField> } {
     const r = rng.pick(recipes);
     return { id: r.id, fn: r.build(rng.fork(), registry) as NodeFn<ScalarField> };
   }
-  // fallback: sharp mask
   return {
     id: 'mask:sharp',
     fn: (ctx: PipelineContext) => {
@@ -268,7 +280,6 @@ export function buildPipeline(rng: RNG): Pipeline {
   const maskInfo = buildMask(rng.fork());
   const composeFn = registry.get('col:compose')!.create({});
 
-  // fallback 色用于亮度太低时的加法填充
   const [fbR, fbG, fbB] = hslToRgb(rng.random(), rng.range(0.5, 1), rng.range(0.4, 0.6));
 
   let iconBoost = 1;
@@ -277,18 +288,13 @@ export function buildPipeline(rng: RNG): Pipeline {
   let calibrated = false;
 
   return {
-    desc: {
-      icon: iconChain.ids,
-      bg: bgChain.ids,
-      mask: maskInfo.id,
-    },
+    desc: { icon: iconChain.ids, bg: bgChain.ids, mask: maskInfo.id },
     execute(ctx: PipelineContext): Uint8ClampedArray {
       const iconColor = iconChain.run(ctx);
       const bgColor = bgChain.run(ctx);
       const mask = maskInfo.fn(ctx);
       const pixels = composeFn(ctx, iconColor, bgColor, mask) as Uint8ClampedArray;
 
-      // 首帧亮度校准
       if (!calibrated) {
         const { insideMask } = ctx.geo;
         let iconSum = 0, iconN = 0, bgSum = 0, bgN = 0;
@@ -299,7 +305,6 @@ export function buildPipeline(rng: RNG): Pipeline {
         }
         const iconAvg = iconN > 0 ? iconSum / iconN : 0;
         const bgAvg = bgN > 0 ? bgSum / bgN : 0;
-
         if (iconAvg < MIN_ICON_LUM) {
           iconBoost = iconAvg > 2 ? Math.min(MIN_ICON_LUM / iconAvg, 5) : 1;
           if (iconAvg <= 2) iconAdd = MIN_ICON_LUM;

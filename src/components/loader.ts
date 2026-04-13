@@ -8,6 +8,10 @@ import './sources/time.js';
 import './sources/fractal.js';
 import './sources/kaleidoscope.js';
 import './sources/radial.js';
+import './sources/domain-warp.js';
+import './sources/moire.js';
+import './sources/spiral.js';
+import './sources/plasma.js';
 
 // Transforms
 import './transforms/remap.js';
@@ -16,6 +20,8 @@ import './transforms/edge.js';
 import './transforms/quantize.js';
 import './transforms/feedback.js';
 import './transforms/invert.js';
+import './transforms/mirror.js';
+import './transforms/posterize.js';
 
 // Lighting
 import './lighting/emboss.js';
@@ -32,7 +38,7 @@ import './color/compose.js';
 // Combiners
 import './combiners/combine.js';
 
-// Recipes
+// Mask recipes
 import '../recipes/mask/sharp.js';
 import '../recipes/mask/soft.js';
 import '../recipes/mask/breathing.js';
