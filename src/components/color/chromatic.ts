@@ -8,9 +8,9 @@ const component: Component<P> = {
   id: 'col:chromatic',
   type: ComponentType.COLOR_TRANSFORM,
   params: {
-    offset: { type: 'float', min: 1, max: 6, default: 3 },
+    offset: { type: 'float', min: 0.3, max: 1.5, default: 1 },
     angle: { type: 'float', min: 0, max: 6.28, default: 0 },
-    animate: { type: 'float', min: 0, max: 2, default: 1 },
+    animate: { type: 'float', min: 0, max: 1, default: 1 },
   },
   create({ offset, angle, animate }) {
     return (ctx: PipelineContext, input: ColorField) => {

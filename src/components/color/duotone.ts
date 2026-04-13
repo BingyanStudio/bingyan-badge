@@ -1,4 +1,4 @@
-// 双色调映射：将标量场映射到两种颜色之间的渐变
+// 双色调映射：将标量场映射到两种和声相关的颜色之间的渐变
 // 与 threshold 组合产生高对比海报效果；与 blur 组合产生柔和水彩双色
 import { registry } from '../../core/registry.js';
 import { ScalarField, ColorField } from '../../core/fields.js';
@@ -12,7 +12,7 @@ const component: Component<P> = {
   type: ComponentType.COLOR,
   params: {
     hDark: { type: 'float', min: 0, max: 1, default: 0.6 },
-    hLight: { type: 'float', min: 0, max: 1, default: 0.1 },
+    hLight: { type: 'float', min: 0, max: 0.35, default: 0.1 },
     sDark: { type: 'float', min: 0.4, max: 1, default: 0.7 },
     sLight: { type: 'float', min: 0.4, max: 1, default: 0.8 },
     lDark: { type: 'float', min: 0.1, max: 0.35, default: 0.2 },
@@ -21,7 +21,8 @@ const component: Component<P> = {
   },
   create({ hDark, hLight, sDark, sLight, lDark, lLight, contrast }) {
     const [dr, dg, db] = hslToRgb(hDark, sDark, lDark);
-    const [lr, lg, lb] = hslToRgb(hLight, sLight, lLight);
+    // hLight 作为相对于 hDark 的色相偏移，限制在邻近色/互补色范围
+    const [lr, lg, lb] = hslToRgb(((hDark + hLight) % 1 + 1) % 1, sLight, lLight);
 
     return (_ctx: PipelineContext, input: ScalarField) => {
       const c = new ColorField(input.width, input.height);

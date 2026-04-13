@@ -9,10 +9,10 @@ const component: Component<P> = {
   id: 'col:hsl-shift',
   type: ComponentType.COLOR_TRANSFORM,
   params: {
-    hShift: { type: 'float', min: 0, max: 1, default: 0 },
+    hShift: { type: 'float', min: 0, max: 0.15, default: 0 },
     sMul: { type: 'float', min: 0.7, max: 1.4, default: 1 },
     lMul: { type: 'float', min: 0.7, max: 1.3, default: 1 },
-    hSpeed: { type: 'float', min: 0, max: 1.5, default: 0 },
+    hSpeed: { type: 'float', min: 0, max: 0.4, default: 0 },
   },
   create({ hShift, sMul, lMul, hSpeed }) {
     return (ctx: PipelineContext, input: ColorField, modulator?: ScalarField) => {

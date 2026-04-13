@@ -58,7 +58,7 @@ function randomStops(rng: RNG, minL: number, maxL: number): GradientStop[] {
   const n = rng.randInt(3, 7);
   const baseH = rng.random();
   // 色相展幅：允许适度范围，但保持和谐（类比色/邻近色方案）
-  const spread = rng.range(0.05, 0.25);
+  const spread = rng.range(0.03, 0.15);
   const dir = rng.random() > 0.5 ? 1 : -1;
   const stops: GradientStop[] = [];
 
@@ -254,7 +254,8 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
   // 6. Color transforms: 可叠加多层（impasto, watercolor, chromatic, vignette）
   const colXfFns: NodeFn<any>[] = [];
   const colXfPool = registry.listByType(ComponentType.COLOR_TRANSFORM)
-    .filter(c => c.id !== 'col:light-apply' && c.id !== 'col:hsl-shift');
+    .filter(c => c.id !== 'col:light-apply' && c.id !== 'col:hsl-shift')
+    .filter(c => !(hslFn && c.id === 'col:chromatic'));  // hsl-shift + chromatic 叠加导致彩虹
   // 第一层 45% 概率
   if (rng.random() < 0.45 && colXfPool.length > 0) {
     const comp = rng.pick(colXfPool);
@@ -262,9 +263,9 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
     ensureLoopParams(params);
     colXfFns.push(comp.create(params));
     ids.push(comp.id);
-    // 第二层 25% 概率（不同类型）
-    const remaining = colXfPool.filter(c => c.id !== comp.id);
-    if (rng.random() < 0.25 && remaining.length > 0) {
+    // 第二层 25% 概率（不同类型），chromatic 不叠加
+    const remaining = colXfPool.filter(c => c.id !== comp.id && c.id !== 'col:chromatic');
+    if (comp.id !== 'col:chromatic' && rng.random() < 0.25 && remaining.length > 0) {
       const comp2 = rng.pick(remaining);
       const params2 = randomizeParams(comp2, rng);
       ensureLoopParams(params2);
