@@ -1,9 +1,9 @@
 import { registry } from '../../core/registry.js';
 import { ScalarField } from '../../core/fields.js';
-import { fbm } from '../../core/math.js';
+import { fbm, AnimMode, loopOffset2D } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
-interface P { scale: number; octaves: number; seed: number; scrollX: number; scrollY: number; }
+interface P { scale: number; octaves: number; seed: number; scrollX: number; scrollY: number; animMode: AnimMode; }
 
 const component: Component<P> = {
   id: 'src:noise',
@@ -15,12 +15,11 @@ const component: Component<P> = {
     scrollX: { type: 'float', min: -5, max: 5, default: 0 },
     scrollY: { type: 'float', min: -5, max: 5, default: 0 },
   },
-  create({ scale, octaves, seed, scrollX, scrollY }) {
+  create({ scale, octaves, seed, scrollX, scrollY, animMode = AnimMode.OSCILLATE }) {
     return (ctx: PipelineContext) => {
       const { width: w, height: h } = ctx.geo;
       const f = new ScalarField(w, h);
-      const angle = ctx.t * Math.PI * 2;
-      const ox = Math.sin(angle) * scrollX, oy = Math.cos(angle) * scrollY;
+      const [ox, oy] = loopOffset2D(ctx.t, animMode, scrollX, scrollY);
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           f.data[y * w + x] = fbm(x / w * scale + ox, y / h * scale + oy, octaves, seed);

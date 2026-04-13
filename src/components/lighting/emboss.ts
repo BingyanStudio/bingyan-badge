@@ -1,8 +1,9 @@
 import { registry } from '../../core/registry.js';
 import { ScalarField } from '../../core/fields.js';
+import { AnimMode } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
-interface P { angle: number; elev: number; rotateSpeed: number; depth: number; }
+interface P { angle: number; elev: number; rotateSpeed: number; depth: number; animMode: AnimMode; }
 
 const component: Component<P> = {
   id: 'lit:emboss',
@@ -13,8 +14,9 @@ const component: Component<P> = {
     rotateSpeed: { type: 'float', min: 0, max: 2, default: 0 },
     depth: { type: 'float', min: 0.3, max: 3, default: 1 },
   },
-  create({ angle, elev, rotateSpeed, depth }) {
+  create({ angle, elev, rotateSpeed, depth, animMode = AnimMode.OSCILLATE }) {
     return (ctx: PipelineContext) => {
+      // 光照旋转天然前进式循环
       const a = angle + ctx.t * Math.PI * 2 * rotateSpeed;
       const lx = Math.cos(a) * Math.cos(elev), ly = Math.sin(a) * Math.cos(elev);
       const { width: w, height: h, sdf, normalX, normalY, insideMask } = ctx.geo;

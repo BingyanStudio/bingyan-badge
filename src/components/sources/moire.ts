@@ -1,9 +1,10 @@
 // Moiré 干涉图案：多组同心环/线条叠加产生的干涉条纹
 import { registry } from '../../core/registry.js';
 import { ScalarField } from '../../core/fields.js';
+import { AnimMode, loopOffset2D } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
-interface P { layers: number; baseFreq: number; drift: number; seed: number; }
+interface P { layers: number; baseFreq: number; drift: number; seed: number; animMode: AnimMode; }
 
 const component: Component<P> = {
   id: 'src:moire',
@@ -14,8 +15,7 @@ const component: Component<P> = {
     drift: { type: 'float', min: 0.05, max: 0.3, default: 0.15 },
     seed: { type: 'int', min: 0, max: 99999, default: 0 },
   },
-  create({ layers, baseFreq, drift, seed }) {
-    // 预生成每层的中心偏移和频率
+  create({ layers, baseFreq, drift, seed, animMode = AnimMode.OSCILLATE }) {
     const centers: { cx: number; cy: number; freq: number; phase: number }[] = [];
     let s = seed;
     for (let i = 0; i < layers; i++) {
@@ -33,14 +33,22 @@ const component: Component<P> = {
     return (ctx: PipelineContext) => {
       const { width: w, height: h } = ctx.geo;
       const f = new ScalarField(w, h);
+      // 时间相位用于波纹推进（始终使用 2πt 保证循环）
       const ta = ctx.t * Math.PI * 2;
 
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           let val = 0;
           for (const c of centers) {
-            const dx = x / w - c.cx - Math.sin(ta + c.phase) * drift;
-            const dy = y / h - c.cy - Math.cos(ta + c.phase * 1.3) * drift;
+            // 中心漂移使用 animMode 控制运动轨迹
+            const [driftX, driftY] = loopOffset2D(
+              (ctx.t + c.phase / (Math.PI * 2)) % 1,
+              animMode,
+              drift,
+              drift
+            );
+            const dx = x / w - c.cx - driftX;
+            const dy = y / h - c.cy - driftY;
             const dist = Math.sqrt(dx * dx + dy * dy);
             val += 0.5 + 0.5 * Math.sin(dist * c.freq + ta);
           }

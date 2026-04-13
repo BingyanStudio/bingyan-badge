@@ -1,8 +1,9 @@
 import { registry } from '../../core/registry.js';
 import { ColorField } from '../../core/fields.js';
+import { AnimMode } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
-interface P { offset: number; angle: number; animate: number; }
+interface P { offset: number; angle: number; animate: number; animMode: AnimMode; }
 
 const component: Component<P> = {
   id: 'col:chromatic',
@@ -12,10 +13,11 @@ const component: Component<P> = {
     angle: { type: 'float', min: 0, max: 6.28, default: 0 },
     animate: { type: 'float', min: 0, max: 1, default: 1 },
   },
-  create({ offset, angle, animate }) {
+  create({ offset, angle, animate, animMode = AnimMode.OSCILLATE }) {
     return (ctx: PipelineContext, input: ColorField) => {
       const { width: w, height: h } = input;
       const c = new ColorField(w, h);
+      // 色差旋转方向始终前进（天然循环），不受 animMode 影响
       const a = angle + ctx.t * Math.PI * 2 * animate;
       const dx = Math.cos(a) * offset;
       const dy = Math.sin(a) * offset;
@@ -23,19 +25,15 @@ const component: Component<P> = {
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           const i = y * w + x;
-          // Red channel shifts one way, blue the other, green stays
           const rxf = x + dx, ryf = y + dy;
           const bxf = x - dx, byf = y - dy;
 
-          // Bilinear sample for R
           const rx0 = Math.floor(rxf), ry0 = Math.floor(ryf);
           const rfx = rxf - rx0, rfy = ryf - ry0;
           c.r[i] = sampleChannel(input.r, w, h, rx0, ry0, rfx, rfy);
 
-          // G stays in place
           c.g[i] = input.g[i]!;
 
-          // Bilinear sample for B
           const bx0 = Math.floor(bxf), by0 = Math.floor(byf);
           const bfx = bxf - bx0, bfy = byf - by0;
           c.b[i] = sampleChannel(input.b, w, h, bx0, by0, bfx, bfy);

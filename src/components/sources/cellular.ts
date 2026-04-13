@@ -1,14 +1,15 @@
 // 元胞自动机图案：用简单规则迭代产生复杂的涌现图案
-// 1D Wolfram 规则在 2D 上逐行展开，用 sin(t) 滚动保证循环
+// 1D Wolfram 规则在 2D 上逐行展开，用循环偏移保证动画首尾一致
 import { registry } from '../../core/registry.js';
 import { ScalarField } from '../../core/fields.js';
-import { hash } from '../../core/math.js';
+import { hash, AnimMode, loopValue01 } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
 interface P {
   rule: number;
   scale: number;
   seed: number;
+  animMode: AnimMode;
 }
 
 const component: Component<P> = {
@@ -19,8 +20,7 @@ const component: Component<P> = {
     scale: { type: 'int', min: 1, max: 4, default: 2 },
     seed: { type: 'int', min: 0, max: 99999, default: 0 },
   },
-  create({ rule, scale, seed }) {
-    // 预计算足够行数的自动机网格，运行时通过偏移窗口滚动
+  create({ rule, scale, seed, animMode = AnimMode.OSCILLATE }) {
     let cachedGrid: Float32Array | null = null;
     let cachedSW = 0, cachedSH = 0, cachedTotalRows = 0;
 
@@ -28,7 +28,6 @@ const component: Component<P> = {
       const { width: w, height: h } = ctx.geo;
       const sw = Math.ceil(w / scale);
       const sh = Math.ceil(h / scale);
-      // 预留额外行用于滚动
       const scrollRange = sh;
       const totalRows = sh + scrollRange;
 
@@ -56,8 +55,7 @@ const component: Component<P> = {
         }
       }
 
-      // sin(t*2π) 产生 [0, scrollRange) 的循环偏移
-      const scrollOffset = Math.floor((Math.sin(ctx.t * Math.PI * 2) * 0.5 + 0.5) * scrollRange);
+      const scrollOffset = Math.floor(loopValue01(ctx.t, animMode) * scrollRange);
 
       const f = new ScalarField(w, h);
       for (let y = 0; y < h; y++) {

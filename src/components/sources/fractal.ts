@@ -2,16 +2,17 @@
 // 将 SDF 值做周期性折叠，产生类似等高线/分形缩放的图案
 import { registry } from '../../core/registry.js';
 import { ScalarField } from '../../core/fields.js';
-import { fbm } from '../../core/math.js';
+import { fbm, AnimMode, loopValue } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
 interface P {
-  layers: number;     // 分形重复层数
-  decay: number;      // 每层衰减
-  freqMul: number;    // 每层频率倍增
-  distortion: number; // 噪声扰动强度
+  layers: number;
+  decay: number;
+  freqMul: number;
+  distortion: number;
   seed: number;
   scrollSpeed: number;
+  animMode: AnimMode;
 }
 
 const component: Component<P> = {
@@ -25,28 +26,30 @@ const component: Component<P> = {
     seed: { type: 'int', min: 0, max: 99999, default: 0 },
     scrollSpeed: { type: 'float', min: 0, max: 1.5, default: 1 },
   },
-  create({ layers, decay, freqMul, distortion, seed, scrollSpeed }) {
+  create({ layers, decay, freqMul, distortion, seed, scrollSpeed, animMode = AnimMode.OSCILLATE }) {
     return (ctx: PipelineContext) => {
       const { width: w, height: h, sdf, normalX, normalY } = ctx.geo;
       const f = new ScalarField(w, h);
-      const phase = Math.sin(ctx.t * Math.PI * 2) * scrollSpeed;
+      const phase = loopValue(ctx.t, animMode) * scrollSpeed;
+      // 分形层内的时间推进：FORWARD 模式直接用 t，其他模式用 sin
+      const layerTime = animMode === AnimMode.FORWARD
+        ? ctx.t * Math.PI * 2
+        : ctx.t * Math.PI * 2;
 
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           const i = y * w + x;
           const baseDist = Math.abs(sdf[i]!);
 
-          // 噪声扰动采样坐标
           const nx = x + normalX[i]! * distortion * fbm(x / w * 3 + phase, y / h * 3, 3, seed);
           const ny = y + normalY[i]! * distortion * fbm(x / w * 3, y / h * 3 + phase, 3, seed + 100);
           const distortedDist = Math.sqrt((nx - x) ** 2 + (ny - y) ** 2) + baseDist;
 
-          // 分形折叠：多层不同频率的正弦波叠加
           let val = 0;
           let amp = 1;
           let freq = 0.15;
           for (let l = 0; l < layers; l++) {
-            val += amp * (0.5 + 0.5 * Math.sin(distortedDist * freq + ctx.t * Math.PI * 2 * (l + 1)));
+            val += amp * (0.5 + 0.5 * Math.sin(distortedDist * freq + layerTime * (l + 1)));
             amp *= decay;
             freq *= freqMul;
           }

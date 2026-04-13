@@ -2,7 +2,7 @@
 // 与 impasto 组合 → 油画底纹；与 halftone 组合 → 雕版套印；与 gradient 组合 → 印象派底色
 import { registry } from '../../core/registry.js';
 import { ScalarField } from '../../core/fields.js';
-import { fbm } from '../../core/math.js';
+import { fbm, AnimMode, loopOffset2D } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
 interface P {
@@ -12,6 +12,7 @@ interface P {
   layers: number;
   seed: number;
   animate: number;
+  animMode: AnimMode;
 }
 
 const component: Component<P> = {
@@ -25,25 +26,22 @@ const component: Component<P> = {
     seed: { type: 'int', min: 0, max: 99999, default: 0 },
     animate: { type: 'float', min: 0.1, max: 1.5, default: 0.5 },
   },
-  create({ scale, stretch, angle, layers, seed, animate }) {
+  create({ scale, stretch, angle, layers, seed, animate, animMode = AnimMode.OSCILLATE }) {
     return (ctx: PipelineContext) => {
       const { width: w, height: h } = ctx.geo;
       const f = new ScalarField(w, h);
 
       const cosA = Math.cos(angle);
       const sinA = Math.sin(angle);
-      const phase = ctx.t * Math.PI * 2 * animate;
 
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           const nx = x / w * scale;
           const ny = y / h * scale;
 
-          // 旋转到笔刷方向
           const bx = cosA * nx + sinA * ny;
           const by = -sinA * nx + cosA * ny;
 
-          // 沿笔刷方向压缩采样（stretch 倍）→ 产生各向异性
           const sx = bx;
           const sy = by * stretch;
 
@@ -52,9 +50,11 @@ const component: Component<P> = {
           let totalAmp = 0;
           for (let l = 0; l < layers; l++) {
             const lScale = 1 + l * 0.7;
+            // 每层用自己的相位偏移（l 作为额外偏移）
+            const [phX, phY] = loopOffset2D((ctx.t + l * 0.17) % 1, animMode, 0.3 * animate, 0.3 * animate);
             val += amp * fbm(
-              sx * lScale + Math.sin(phase + l) * 0.3,
-              sy * lScale + Math.cos(phase + l) * 0.3,
+              sx * lScale + phX,
+              sy * lScale + phY,
               4, seed + l * 1000
             );
             totalAmp += amp;

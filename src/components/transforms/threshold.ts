@@ -2,9 +2,10 @@
 // 与 grain/noise 组合可做溶解效果；与 erode 组合可做描边
 import { registry } from '../../core/registry.js';
 import { ScalarField } from '../../core/fields.js';
+import { AnimMode, loopValue } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
-interface P { cutoff: number; softness: number; wobble: number; }
+interface P { cutoff: number; softness: number; wobble: number; animMode: AnimMode; }
 
 const component: Component<P> = {
   id: 'xf:threshold',
@@ -14,10 +15,10 @@ const component: Component<P> = {
     softness: { type: 'float', min: 0.01, max: 0.3, default: 0.05 },
     wobble: { type: 'float', min: 0, max: 0.3, default: 0 },
   },
-  create({ cutoff, softness, wobble }) {
+  create({ cutoff, softness, wobble, animMode = AnimMode.OSCILLATE }) {
     return (ctx: PipelineContext, input: ScalarField) => {
       const f = new ScalarField(input.width, input.height);
-      const c = cutoff + Math.sin(ctx.t * Math.PI * 2) * wobble;
+      const c = cutoff + loopValue(ctx.t, animMode) * wobble;
       const invSoft = softness > 0.001 ? 1 / softness : 1000;
       for (let i = 0; i < input.data.length; i++) {
         const v = (input.data[i]! - c) * invSoft + 0.5;

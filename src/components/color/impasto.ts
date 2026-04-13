@@ -3,6 +3,7 @@
 // 核心思路：利用颜色场的局部梯度模拟颜料厚度，产生方向性高光
 import { registry } from '../../core/registry.js';
 import { ColorField } from '../../core/fields.js';
+import { AnimMode } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
 interface P {
@@ -11,6 +12,7 @@ interface P {
   specular: number;
   roughness: number;
   animate: number;
+  animMode: AnimMode;
 }
 
 const component: Component<P> = {
@@ -23,11 +25,12 @@ const component: Component<P> = {
     roughness: { type: 'float', min: 0.1, max: 1, default: 0.5 },
     animate: { type: 'float', min: 0, max: 1.5, default: 0.3 },
   },
-  create({ thickness, lightAngle, specular, roughness, animate }) {
+  create({ thickness, lightAngle, specular, roughness, animate, animMode = AnimMode.OSCILLATE }) {
     return (ctx: PipelineContext, input: ColorField) => {
       const { width: w, height: h } = input;
       const c = new ColorField(w, h);
 
+      // 光照旋转始终前进（天然循环）
       const la = lightAngle + ctx.t * Math.PI * 2 * animate;
       const lx = Math.cos(la);
       const ly = Math.sin(la);
@@ -36,7 +39,6 @@ const component: Component<P> = {
         for (let x = 0; x < w; x++) {
           const i = y * w + x;
 
-          // 用亮度场的梯度模拟颜料厚度的法线
           const lumC = input.r[i]! * 0.299 + input.g[i]! * 0.587 + input.b[i]! * 0.114;
 
           const ir = x < w - 1 ? i + 1 : i;
@@ -48,16 +50,13 @@ const component: Component<P> = {
           const gx = (lumR - lumC) * thickness;
           const gy = (lumD - lumC) * thickness;
 
-          // 表面法线（从高度图近似）
           const nLen = Math.sqrt(gx * gx + gy * gy + 1);
           const nx = -gx / nLen;
           const ny = -gy / nLen;
           const nz = 1 / nLen;
 
-          // 漫反射
           const diffuse = Math.max(0, nx * lx + ny * ly + nz * 0.5) * 0.6 + 0.4;
 
-          // 高光（Blinn-Phong 近似）
           const hx = lx, hy = ly, hz = 1;
           const hLen = Math.sqrt(hx * hx + hy * hy + hz * hz);
           const nDotH = Math.max(0, (nx * hx + ny * hy + nz * hz) / hLen);

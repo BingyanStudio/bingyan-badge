@@ -2,16 +2,17 @@
 // 将极坐标角度做 N 次对称映射，产生万花筒效果
 import { registry } from '../../core/registry.js';
 import { ScalarField } from '../../core/fields.js';
-import { fbm, voronoi } from '../../core/math.js';
+import { fbm, voronoi, AnimMode, loopOffset2D } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
 interface P {
-  segments: number;   // 对称段数
-  pattern: string;    // 填充纹理类型
+  segments: number;
+  pattern: string;
   scale: number;
   seed: number;
   rotateSpeed: number;
   zoom: number;
+  animMode: AnimMode;
 }
 
 const component: Component<P> = {
@@ -25,15 +26,19 @@ const component: Component<P> = {
     rotateSpeed: { type: 'float', min: 0.1, max: 1.5, default: 0.5 },
     zoom: { type: 'float', min: 0.5, max: 3, default: 1 },
   },
-  create({ segments, pattern, scale, seed, rotateSpeed, zoom }) {
+  create({ segments, pattern, scale, seed, rotateSpeed, zoom, animMode = AnimMode.OSCILLATE }) {
     const segAngle = (Math.PI * 2) / segments;
 
     return (ctx: PipelineContext) => {
       const { width: w, height: h } = ctx.geo;
       const f = new ScalarField(w, h);
       const cx = w / 2, cy = h / 2;
+      // 旋转始终是前进式的（已经天然循环）
       const rotation = ctx.t * Math.PI * 2 * rotateSpeed;
       const maxR = Math.sqrt(cx * cx + cy * cy);
+      // 内部纹理动画用 animMode 控制
+      const [noiseOffX, noiseOffY] = loopOffset2D(ctx.t, animMode, 0.5, 0.5);
+      const timePhase = ctx.t * Math.PI * 2;
 
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
@@ -41,11 +46,9 @@ const component: Component<P> = {
           let angle = Math.atan2(dy, dx) + rotation;
           const r = Math.sqrt(dx * dx + dy * dy) / maxR * zoom;
 
-          // 万花筒折叠：将角度映射到 [0, segAngle) 内，再做镜像
           angle = ((angle % segAngle) + segAngle) % segAngle;
           if (angle > segAngle / 2) angle = segAngle - angle;
 
-          // 用折叠后的极坐标采样纹理
           const sx = r * Math.cos(angle) * scale;
           const sy = r * Math.sin(angle) * scale;
 
@@ -57,16 +60,16 @@ const component: Component<P> = {
               break;
             }
             case 'rings': {
-              val = 0.5 + 0.5 * Math.sin(r * scale * 10 + ctx.t * Math.PI * 2);
+              val = 0.5 + 0.5 * Math.sin(r * scale * 10 + timePhase);
               break;
             }
             case 'spiral': {
               const spiralAngle = angle + r * 8;
-              val = 0.5 + 0.5 * Math.sin(spiralAngle * segments / 2 + ctx.t * Math.PI * 2 * 2);
+              val = 0.5 + 0.5 * Math.sin(spiralAngle * segments / 2 + timePhase * 2);
               break;
             }
             default: { // noise
-              val = fbm(sx + Math.sin(ctx.t * Math.PI * 2) * 0.5, sy + Math.cos(ctx.t * Math.PI * 2) * 0.5, 4, seed);
+              val = fbm(sx + noiseOffX, sy + noiseOffY, 4, seed);
               break;
             }
           }

@@ -1,8 +1,9 @@
 import { registry } from '../../core/registry.js';
 import { ScalarField } from '../../core/fields.js';
+import { AnimMode } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
-interface P { angle: number; power: number; rotateSpeed: number; }
+interface P { angle: number; power: number; rotateSpeed: number; animMode: AnimMode; }
 
 const component: Component<P> = {
   id: 'lit:specular',
@@ -12,8 +13,9 @@ const component: Component<P> = {
     power: { type: 'float', min: 4, max: 64, default: 20 },
     rotateSpeed: { type: 'float', min: 0, max: 2, default: 0 },
   },
-  create({ angle, power, rotateSpeed }) {
+  create({ angle, power, rotateSpeed, animMode = AnimMode.OSCILLATE }) {
     return (ctx: PipelineContext) => {
+      // 光照旋转天然前进式循环
       const a = angle + ctx.t * Math.PI * 2 * rotateSpeed;
       const lx = Math.cos(a), ly = Math.sin(a);
       const { width: w, height: h, normalX, normalY, insideMask } = ctx.geo;

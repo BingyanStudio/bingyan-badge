@@ -3,10 +3,10 @@
 // 参考 Inigo Quilez 的 "warping" 文章
 import { registry } from '../../core/registry.js';
 import { ScalarField } from '../../core/fields.js';
-import { fbm } from '../../core/math.js';
+import { fbm, AnimMode, loopOffset2D } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
-interface P { scale: number; warpStrength: number; iterations: number; seed: number; animate: number; }
+interface P { scale: number; warpStrength: number; iterations: number; seed: number; animate: number; animMode: AnimMode; }
 
 const component: Component<P> = {
   id: 'src:domain-warp',
@@ -18,12 +18,11 @@ const component: Component<P> = {
     seed: { type: 'int', min: 0, max: 99999, default: 0 },
     animate: { type: 'float', min: 0.3, max: 1.5, default: 1 },
   },
-  create({ scale, warpStrength, iterations, seed, animate }) {
+  create({ scale, warpStrength, iterations, seed, animate, animMode = AnimMode.OSCILLATE }) {
     return (ctx: PipelineContext) => {
       const { width: w, height: h } = ctx.geo;
       const f = new ScalarField(w, h);
-      const ta = Math.sin(ctx.t * Math.PI * 2) * animate;
-      const tb = Math.cos(ctx.t * Math.PI * 2) * animate;
+      const [ta, tb] = loopOffset2D(ctx.t, animMode, animate, animate);
 
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {

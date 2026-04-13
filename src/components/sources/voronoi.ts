@@ -1,9 +1,9 @@
 import { registry } from '../../core/registry.js';
 import { ScalarField } from '../../core/fields.js';
-import { voronoi } from '../../core/math.js';
+import { voronoi, AnimMode, loopValue } from '../../core/math.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
-interface P { scale: number; seed: number; mode: string; scroll: number; }
+interface P { scale: number; seed: number; mode: string; scroll: number; animMode: AnimMode; }
 
 const component: Component<P> = {
   id: 'src:voronoi',
@@ -14,11 +14,11 @@ const component: Component<P> = {
     mode: { type: 'enum', options: ['dist', 'edge'], default: 'dist' },
     scroll: { type: 'float', min: 0, max: 5, default: 0 },
   },
-  create({ scale, seed, mode, scroll }) {
+  create({ scale, seed, mode, scroll, animMode = AnimMode.OSCILLATE }) {
     return (ctx: PipelineContext) => {
       const { width: w, height: h } = ctx.geo;
       const f = new ScalarField(w, h);
-      const ph = Math.sin(ctx.t * Math.PI * 2) * scroll;
+      const ph = loopValue(ctx.t, animMode) * scroll;
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           const v = voronoi(x / w * scale + ph, y / h * scale, seed);
