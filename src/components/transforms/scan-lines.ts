@@ -10,7 +10,7 @@ const component: Component<P> = {
   params: {
     spacing: { type: 'int', min: 2, max: 8, default: 4 },
     thickness: { type: 'float', min: 0.1, max: 0.7, default: 0.35 },
-    scrollSpeed: { type: 'float', min: 0, max: 4, default: 1 },
+    scrollSpeed: { type: 'float', min: 0, max: 2, default: 1 },
   },
   create({ spacing, thickness, scrollSpeed }) {
     return (ctx: PipelineContext, input: ScalarField) => {

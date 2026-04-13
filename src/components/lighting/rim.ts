@@ -11,7 +11,7 @@ const component: Component<P> = {
     edgeWidth: { type: 'float', min: 2, max: 25, default: 8 },
     softness: { type: 'float', min: 0.5, max: 4, default: 1.5 },
     pulse: { type: 'float', min: 0, max: 1, default: 0 },
-    pulseFreq: { type: 'float', min: 0.2, max: 4, default: 1 },
+    pulseFreq: { type: 'float', min: 0.2, max: 2, default: 1 },
   },
   create({ edgeWidth, softness, pulse, pulseFreq }) {
     return (ctx: PipelineContext) => {

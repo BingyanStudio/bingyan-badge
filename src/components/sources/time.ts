@@ -9,7 +9,7 @@ const component: Component<P> = {
   type: ComponentType.SOURCE,
   params: {
     waveform: { type: 'enum', options: ['sin', 'saw', 'tri', 'pulse', 'exp'], default: 'sin' },
-    freq: { type: 'float', min: 0.1, max: 8, default: 1 },
+    freq: { type: 'float', min: 0.1, max: 2, default: 1 },
     phase: { type: 'float', min: 0, max: 1, default: 0 },
   },
   create({ waveform, freq, phase }) {

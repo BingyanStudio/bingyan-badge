@@ -23,7 +23,7 @@ const component: Component<P> = {
     freqMul: { type: 'float', min: 1.5, max: 3, default: 2 },
     distortion: { type: 'float', min: 0, max: 15, default: 5 },
     seed: { type: 'int', min: 0, max: 99999, default: 0 },
-    scrollSpeed: { type: 'float', min: 0, max: 3, default: 1 },
+    scrollSpeed: { type: 'float', min: 0, max: 1.5, default: 1 },
   },
   create({ layers, decay, freqMul, distortion, seed, scrollSpeed }) {
     return (ctx: PipelineContext) => {

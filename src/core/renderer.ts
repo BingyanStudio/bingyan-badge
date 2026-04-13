@@ -49,7 +49,7 @@ export async function renderBadge(svgBuffer: Buffer, sha: string, options: Rende
     width = 256,
     height = 256,
     frames = 30,
-    delay = 50,
+    delay = 80,
     quality = 10,
     transparent = true,
   } = options;

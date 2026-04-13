@@ -10,7 +10,7 @@ const component: Component<P> = {
   params: {
     angle: { type: 'float', min: 0, max: 6.28, default: 0.8 },
     power: { type: 'float', min: 4, max: 64, default: 20 },
-    rotateSpeed: { type: 'float', min: 0, max: 8, default: 0 },
+    rotateSpeed: { type: 'float', min: 0, max: 2, default: 0 },
   },
   create({ angle, power, rotateSpeed }) {
     return (ctx: PipelineContext) => {

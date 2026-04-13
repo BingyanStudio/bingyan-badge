@@ -10,7 +10,7 @@ const component: Component<P> = {
   params: {
     angle: { type: 'float', min: 0, max: 6.28, default: 0.8 },
     elev: { type: 'float', min: 0.1, max: 1.2, default: 0.6 },
-    rotateSpeed: { type: 'float', min: 0, max: 6, default: 0 },
+    rotateSpeed: { type: 'float', min: 0, max: 2, default: 0 },
     depth: { type: 'float', min: 0.3, max: 3, default: 1 },
   },
   create({ angle, elev, rotateSpeed, depth }) {

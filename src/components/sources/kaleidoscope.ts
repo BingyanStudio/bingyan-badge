@@ -22,7 +22,7 @@ const component: Component<P> = {
     pattern: { type: 'enum', options: ['noise', 'voronoi', 'rings', 'spiral'], default: 'noise' },
     scale: { type: 'float', min: 1, max: 8, default: 3 },
     seed: { type: 'int', min: 0, max: 99999, default: 0 },
-    rotateSpeed: { type: 'float', min: 0.1, max: 3, default: 0.5 },
+    rotateSpeed: { type: 'float', min: 0.1, max: 1.5, default: 0.5 },
     zoom: { type: 'float', min: 0.5, max: 3, default: 1 },
   },
   create({ segments, pattern, scale, seed, rotateSpeed, zoom }) {

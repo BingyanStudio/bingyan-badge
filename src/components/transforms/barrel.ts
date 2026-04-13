@@ -9,7 +9,7 @@ const component: Component<P> = {
   type: ComponentType.TRANSFORM,
   params: {
     strength: { type: 'float', min: 0.1, max: 0.8, default: 0.3 },
-    animate: { type: 'float', min: 0, max: 3, default: 1 },
+    animate: { type: 'float', min: 0, max: 2, default: 1 },
   },
   create({ strength, animate }) {
     return (ctx: PipelineContext, input: ScalarField) => {

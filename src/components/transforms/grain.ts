@@ -10,7 +10,7 @@ const component: Component<P> = {
   type: ComponentType.TRANSFORM,
   params: {
     amount: { type: 'float', min: 0.02, max: 0.2, default: 0.08 },
-    speed: { type: 'float', min: 1, max: 4, default: 2 },
+    speed: { type: 'float', min: 0.5, max: 1.5, default: 2 },
     seed: { type: 'int', min: 0, max: 9999, default: 0 },
   },
   create({ amount, speed, seed }) {

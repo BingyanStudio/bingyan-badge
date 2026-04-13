@@ -10,7 +10,7 @@ const component: Component<P> = {
   params: {
     offset: { type: 'float', min: 1, max: 6, default: 3 },
     angle: { type: 'float', min: 0, max: 6.28, default: 0 },
-    animate: { type: 'float', min: 0, max: 4, default: 1 },
+    animate: { type: 'float', min: 0, max: 2, default: 1 },
   },
   create({ offset, angle, animate }) {
     return (ctx: PipelineContext, input: ColorField) => {

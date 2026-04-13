@@ -10,7 +10,7 @@ const component: Component<P> = {
   type: ComponentType.SOURCE,
   params: {
     complexity: { type: 'int', min: 3, max: 7, default: 5 },
-    speed: { type: 'float', min: 0.5, max: 3, default: 1 },
+    speed: { type: 'float', min: 0.5, max: 1.5, default: 1 },
     scale: { type: 'float', min: 2, max: 8, default: 4 },
   },
   create({ complexity, speed, scale }) {
