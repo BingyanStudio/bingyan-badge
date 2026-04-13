@@ -34,7 +34,7 @@ async function main() {
 
   // Brightness audit
   const svgBuf = fs.readFileSync('icon.svg');
-  const W = 256, H = 256, FRAMES = 10;
+  const W = 256, H = 256, FRAMES = 60;
   const geo = buildGeometry(SVG_PATH, [0, 0, 275.91, 300], { tx: -12.05, ty: 0 }, W, H);
   const { data } = await sharp(svgBuf)
     .resize(W, H, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })

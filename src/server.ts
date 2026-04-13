@@ -84,8 +84,8 @@ app.get('/api/badge/sha/:sha', async (req, res) => {
 
     const w = intParam(req.query['width'], 256, 32, 1024);
     const h = intParam(req.query['height'], 256, 32, 1024);
-    const sp = intParam(req.query['speed'], 80, 30, 200);
-    const fr = intParam(req.query['frames'], 30, 10, 60);
+    const sp = intParam(req.query['speed'], 50, 20, 200);
+    const fr = intParam(req.query['frames'], 60, 10, 120);
     const tp = boolParam(req.query['transparent'], true);
 
     const key = `${sha}_${w}_${h}_${sp}_${fr}_${tp}`;
@@ -107,8 +107,8 @@ app.get('/api/badge/:owner/:repo', async (req, res) => {
 
     const w = intParam(req.query['width'], 256, 32, 1024);
     const h = intParam(req.query['height'], 256, 32, 1024);
-    const sp = intParam(req.query['speed'], 80, 30, 200);
-    const fr = intParam(req.query['frames'], 30, 10, 60);
+    const sp = intParam(req.query['speed'], 50, 20, 200);
+    const fr = intParam(req.query['frames'], 60, 10, 120);
     const tp = boolParam(req.query['transparent'], true);
 
     const key = `${owner}_${repo}_${sha}_${w}_${h}_${sp}_${fr}_${tp}`;
