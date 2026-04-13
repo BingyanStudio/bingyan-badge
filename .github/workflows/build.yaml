@@ -1,31 +1,22 @@
-name: Build and Push Docker Image
+name: Build and deploy
 
 on:
   push:
     branches: [main]
-
-env:
-  REGISTRY: registry.cn-shenzhen.aliyuncs.com
-  IMAGE: registry.cn-shenzhen.aliyuncs.com/bingyan_studio/bingyan-badge
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    uses: BingyanStudio/actions/.github/workflows/build-and-push-image.yaml@main
+    with:
+      name: bingyan-badge
+      tag: ${{ github.sha }}
 
-      - name: Login to Aliyun Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ env.IMAGE }}:${{ github.sha }}
-            ${{ env.IMAGE }}:latest
+  deploy:
+    needs: build
+    uses: BingyanStudio/actions/.github/workflows/update-deployment.yaml@main
+    with:
+      name: bingyan-badge
+      namespace: bingyan-badge
+      tag: ${{ github.sha }}
+      filename: bingyan-badge.yaml
