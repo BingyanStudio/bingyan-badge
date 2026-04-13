@@ -17,6 +17,10 @@ import './sources/reaction-diffusion.js';
 import './sources/flow-field.js';
 import './sources/truchet.js';
 import './sources/cellular.js';
+import './sources/lissajous.js';
+import './sources/wave-interference.js';
+import './sources/particle-grid.js';
+import './sources/op-art.js';
 
 // Transforms
 import './transforms/remap.js';
@@ -44,6 +48,12 @@ import './transforms/displace.js';
 import './transforms/rotate.js';
 import './transforms/tile.js';
 import './transforms/ridge.js';
+import './transforms/polar.js';
+import './transforms/fisheye.js';
+import './transforms/wave.js';
+import './transforms/crystal.js';
+import './transforms/smear.js';
+import './transforms/fracture.js';
 
 // Lighting
 import './lighting/emboss.js';
@@ -51,6 +61,7 @@ import './lighting/specular.js';
 import './lighting/rim.js';
 import './lighting/ao.js';
 import './lighting/directional.js';
+import './lighting/caustics.js';
 
 // Color
 import './color/gradient.js';
@@ -63,6 +74,9 @@ import './color/chromatic.js';
 import './color/vignette.js';
 import './color/duotone.js';
 import './color/palette.js';
+import './color/color-halftone.js';
+import './color/glow.js';
+import './color/noise-tint.js';
 
 // Combiners
 import './combiners/combine.js';
@@ -72,3 +86,4 @@ import '../recipes/mask/sharp.js';
 import '../recipes/mask/soft.js';
 import '../recipes/mask/breathing.js';
 import '../recipes/mask/noisy.js';
+import '../recipes/mask/wave.js';

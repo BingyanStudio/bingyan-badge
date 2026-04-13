@@ -92,6 +92,10 @@ const SOURCE_WEIGHTS: Record<string, number> = {
   'src:plasma': 5,
   'src:kaleidoscope': 4,
   'src:fractal': 4,
+  'src:lissajous': 3,
+  'src:wave-interference': 4,
+  'src:particle-grid': 3,
+  'src:op-art': 4,
   'src:brush-noise': 4,
   'src:reaction-diffusion': 4,
   'src:flow-field': 4,
@@ -129,6 +133,7 @@ const LIGHTING_WEIGHTS: Record<string, number> = {
   'lit:ao': 4,
   'lit:specular': 4,
   'lit:directional': 4,
+  'lit:caustics': 4,
   'lit:emboss': 1,
 };
 
