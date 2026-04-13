@@ -57,15 +57,19 @@ function ensureLoopParams(params: Record<string, unknown>): void {
 function randomStops(rng: RNG, minL: number, maxL: number): GradientStop[] {
   const n = rng.randInt(3, 7);
   const baseH = rng.random();
-  // 色相变化收敛：多数情况在小色域内做微妙渐变
-  const spread = rng.biased(0.12, 0.08);
+  // 色相展幅：允许适度范围，但保持和谐（类比色/邻近色方案）
+  const spread = rng.range(0.05, 0.25);
   const dir = rng.random() > 0.5 ? 1 : -1;
   const stops: GradientStop[] = [];
+
+  // 饱和度策略：选定一个基准饱和度区间，内部微调
+  // 避免所有 stop 独立随机导致"生"（颜色缺乏关系）
+  const satBase = rng.range(0.45, 0.85);
+  const satVar = rng.range(0.05, 0.15);
+
   for (let i = 0; i < n; i++) {
-    // 饱和度：以中低饱和为主体，偶有高饱和点缀
-    const baseSat = rng.biased(0.4, 0.15);
-    const accent = rng.random() < 0.15;
-    const s = accent ? rng.range(0.65, 0.85) : Math.max(0.1, Math.min(0.7, baseSat));
+    // 饱和度围绕基准微调，保持整体色调统一
+    const s = Math.max(0.2, Math.min(1, satBase + (rng.random() - 0.5) * 2 * satVar));
     stops.push({
       pos: i / (n - 1),
       h: ((baseH + dir * spread * (i / (n - 1))) % 1 + 1) % 1,

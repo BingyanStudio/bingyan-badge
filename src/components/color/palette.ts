@@ -14,7 +14,7 @@ const component: Component<P> = {
     colors: { type: 'int', min: 2, max: 8, default: 4 },
     hueBase: { type: 'float', min: 0, max: 1, default: 0.5 },
     hueSpread: { type: 'float', min: 0.05, max: 0.5, default: 0.15 },
-    saturation: { type: 'float', min: 0.2, max: 1, default: 0.6 },
+    saturation: { type: 'float', min: 0.4, max: 1, default: 0.6 },
   },
   create({ colors, hueBase, hueSpread, saturation }) {
     // pre-compute palette

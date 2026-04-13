@@ -10,8 +10,8 @@ const component: Component<P> = {
   type: ComponentType.COLOR_TRANSFORM,
   params: {
     hShift: { type: 'float', min: 0, max: 1, default: 0 },
-    sMul: { type: 'float', min: 0.5, max: 1.3, default: 1 },
-    lMul: { type: 'float', min: 0.6, max: 1.4, default: 1 },
+    sMul: { type: 'float', min: 0.7, max: 1.4, default: 1 },
+    lMul: { type: 'float', min: 0.7, max: 1.3, default: 1 },
     hSpeed: { type: 'float', min: 0, max: 1.5, default: 0 },
   },
   create({ hShift, sMul, lMul, hSpeed }) {
