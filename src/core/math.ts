@@ -78,3 +78,61 @@ export function rgbToHsl(r: number, g: number, b: number): [number, number, numb
 export function clamp(v: number, lo = 0, hi = 1): number {
   return Math.max(lo, Math.min(hi, v));
 }
+
+// ─── 动画循环模式 ───
+// 所有模式在 t ∈ [0,1) 上无缝循环，首尾帧一致
+
+export enum AnimMode {
+  /** 来回摆动: sin(2πt)，值在 [-1,1] */
+  OSCILLATE = 'oscillate',
+  /** 单向前进: t 线性递增，利用噪声/纹理本身的周期性循环 */
+  FORWARD = 'forward',
+  /** 三角波: 线性来回，比 sin 更"匀速" */
+  TRIANGLE = 'triangle',
+}
+
+/** 返回 [-1, 1] 范围的循环值，不同模式运动感不同 */
+export function loopValue(t: number, mode: AnimMode): number {
+  const TWO_PI = Math.PI * 2;
+  switch (mode) {
+    case AnimMode.FORWARD:
+      // 映射 [0,1) → [-1,1)，线性前进
+      return t * 2 - 1;
+    case AnimMode.TRIANGLE:
+      // 三角波: 0→1→0→-1→0 但线性
+      return t < 0.25 ? t * 4
+        : t < 0.75 ? 2 - t * 4
+        : t * 4 - 4;
+    case AnimMode.OSCILLATE:
+    default:
+      return Math.sin(t * TWO_PI);
+  }
+}
+
+/** 返回 [0, 1] 范围的循环值（半波） */
+export function loopValue01(t: number, mode: AnimMode): number {
+  return loopValue(t, mode) * 0.5 + 0.5;
+}
+
+/**
+ * 返回 2D 循环偏移 [ox, oy]，各分量在 [-amplitude, amplitude] 范围
+ * OSCILLATE: sin/cos 画圆 (已有行为)
+ * FORWARD: 沿对角线匀速平移，利用噪声的平铺性循环
+ * TRIANGLE: 三角波沿 x/y 分别偏移
+ */
+export function loopOffset2D(t: number, mode: AnimMode, ampX: number, ampY: number): [number, number] {
+  const TWO_PI = Math.PI * 2;
+  switch (mode) {
+    case AnimMode.FORWARD:
+      return [t * ampX, t * ampY];
+    case AnimMode.TRIANGLE: {
+      const vx = loopValue(t, AnimMode.TRIANGLE);
+      // y 相位偏移 0.25 避免走直线
+      const vy = loopValue((t + 0.25) % 1, AnimMode.TRIANGLE);
+      return [vx * ampX, vy * ampY];
+    }
+    case AnimMode.OSCILLATE:
+    default:
+      return [Math.sin(t * TWO_PI) * ampX, Math.cos(t * TWO_PI) * ampY];
+  }
+}

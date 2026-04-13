@@ -14,7 +14,7 @@
 
 import { registry } from './registry.js';
 import { ScalarField, ColorField } from './fields.js';
-import { hslToRgb } from './math.js';
+import { hslToRgb, AnimMode } from './math.js';
 import type { RNG, PipelineContext, NodeFn, Component } from './types.js';
 import { ComponentType, RecipeSlot } from './types.js';
 import type { GradientStop } from '../components/color/gradient.js';
@@ -46,11 +46,17 @@ function randomizeParams(comp: Component, rng: RNG): Record<string, unknown> {
 
 const LOOP_FREQ_KEYS = new Set(['freq', 'pulseFreq', 'rotateSpeed', 'scrollSpeed', 'speed', 'animate']);
 
-function ensureLoopParams(params: Record<string, unknown>): void {
+function ensureLoopParams(params: Record<string, unknown>, rng: RNG): void {
   for (const key of LOOP_FREQ_KEYS) {
     if (typeof params[key] === 'number') {
       params[key] = Math.max(1, Math.round(params[key] as number));
     }
+  }
+  if (!('animMode' in params)) {
+    const r = rng.random();
+    if (r < 0.3) params['animMode'] = AnimMode.OSCILLATE;
+    else if (r < 0.7) params['animMode'] = AnimMode.FORWARD;
+    else params['animMode'] = AnimMode.TRIANGLE;
   }
 }
 
@@ -144,7 +150,7 @@ function pickWeightedLighting(rng: RNG): Component {
 
 function makeSourceFn(comp: Component, rng: RNG): NodeFn<any> {
   const params = randomizeParams(comp, rng);
-  ensureLoopParams(params);
+  ensureLoopParams(params, rng);
   return comp.create(params);
 }
 
@@ -152,7 +158,7 @@ function makeTransformFn(rng: RNG): { id: string; fn: NodeFn<any>; needsSecondIn
   const xfs = registry.listByType(ComponentType.TRANSFORM);
   const comp = rng.pick(xfs);
   const params = randomizeParams(comp, rng);
-  ensureLoopParams(params);
+  ensureLoopParams(params, rng);
   if (comp.id === 'xf:feedback') params['key'] = 'fb_' + rng.randInt(0, 9);
   return { id: comp.id, fn: comp.create(params), needsSecondInput: comp.id === 'xf:warp' || comp.id === 'xf:displace' };
 }
@@ -235,7 +241,7 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
   if (rng.random() < (isIcon ? 0.25 : 0.1)) {
     const litComp = pickWeightedLighting(rng);
     const litParams = randomizeParams(litComp, rng);
-    ensureLoopParams(litParams);
+    ensureLoopParams(litParams, rng);
     litFn = litComp.create(litParams);
     litIntensity = rng.range(0.1, 0.3);
     ids.push(litComp.id + '(subtle)');
@@ -246,7 +252,7 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
   if (rng.random() < 0.35) {
     const hslComp = registry.get('col:hsl-shift')!;
     const hslParams = randomizeParams(hslComp, rng);
-    ensureLoopParams(hslParams);
+    ensureLoopParams(hslParams, rng);
     hslFn = hslComp.create(hslParams);
     ids.push('col:hsl-shift');
   }
@@ -260,7 +266,7 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
   if (rng.random() < 0.45 && colXfPool.length > 0) {
     const comp = rng.pick(colXfPool);
     const params = randomizeParams(comp, rng);
-    ensureLoopParams(params);
+    ensureLoopParams(params, rng);
     colXfFns.push(comp.create(params));
     ids.push(comp.id);
     // 第二层 25% 概率（不同类型），chromatic 不叠加
@@ -268,7 +274,7 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
     if (comp.id !== 'col:chromatic' && rng.random() < 0.25 && remaining.length > 0) {
       const comp2 = rng.pick(remaining);
       const params2 = randomizeParams(comp2, rng);
-      ensureLoopParams(params2);
+      ensureLoopParams(params2, rng);
       colXfFns.push(comp2.create(params2));
       ids.push(comp2.id);
     }
