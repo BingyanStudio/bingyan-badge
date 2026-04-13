@@ -104,6 +104,29 @@ function pickWeightedSource(rng: RNG): Component {
   return weighted[weighted.length - 1]!.comp;
 }
 
+const LIGHTING_WEIGHTS: Record<string, number> = {
+  'lit:rim': 5,
+  'lit:ao': 4,
+  'lit:specular': 4,
+  'lit:emboss': 1,
+};
+
+function pickWeightedLighting(rng: RNG): Component {
+  const comps = registry.listByType(ComponentType.LIGHTING);
+  const weighted: { comp: Component; w: number }[] = [];
+  for (const c of comps) {
+    const w = LIGHTING_WEIGHTS[c.id] ?? 2;
+    weighted.push({ comp: c, w });
+  }
+  const total = weighted.reduce((s, e) => s + e.w, 0);
+  let r = rng.random() * total;
+  for (const e of weighted) {
+    r -= e.w;
+    if (r <= 0) return e.comp;
+  }
+  return weighted[weighted.length - 1]!.comp;
+}
+
 function makeSourceFn(comp: Component, rng: RNG): NodeFn<any> {
   const params = randomizeParams(comp, rng);
   ensureLoopParams(params);
@@ -165,16 +188,15 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
   const gradFn = gradComp.create({ stops: gradStops });
   ids.push('col:gradient');
 
-  // 4. Maybe subtle lighting (30% icon, 15% bg)
+  // 4. Maybe subtle lighting (25% icon, 10% bg)
   let litFn: NodeFn<any> | null = null;
   let litIntensity = 0;
-  if (rng.random() < (isIcon ? 0.3 : 0.15)) {
-    const litComps = registry.listByType(ComponentType.LIGHTING);
-    const litComp = rng.pick(litComps);
+  if (rng.random() < (isIcon ? 0.25 : 0.1)) {
+    const litComp = pickWeightedLighting(rng);
     const litParams = randomizeParams(litComp, rng);
     ensureLoopParams(litParams);
     litFn = litComp.create(litParams);
-    litIntensity = rng.range(0.15, 0.4); // 光照强度上限，不再主导画面
+    litIntensity = rng.range(0.1, 0.3);
     ids.push(litComp.id + '(subtle)');
   }
 
@@ -186,6 +208,20 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
     ensureLoopParams(hslParams);
     hslFn = hslComp.create(hslParams);
     ids.push('col:hsl-shift');
+  }
+
+  // 6. Maybe color transform: chromatic aberration, vignette (30%)
+  let colXfFn: NodeFn<any> | null = null;
+  if (rng.random() < 0.3) {
+    const colXfComps = registry.listByType(ComponentType.COLOR_TRANSFORM)
+      .filter(c => c.id !== 'col:light-apply');
+    if (colXfComps.length > 0) {
+      const colXfComp = rng.pick(colXfComps);
+      const colXfParams = randomizeParams(colXfComp, rng);
+      ensureLoopParams(colXfParams);
+      colXfFn = colXfComp.create(colXfParams);
+      ids.push(colXfComp.id);
+    }
   }
 
   return {
@@ -242,6 +278,11 @@ function buildColorChain(rng: RNG, kind: 'icon' | 'bg'): BuiltChain {
       // HSL shift
       if (hslFn) {
         color = hslFn(ctx, color) as ColorField;
+      }
+
+      // Color transform (chromatic, vignette)
+      if (colXfFn) {
+        color = colXfFn(ctx, color) as ColorField;
       }
 
       return color;

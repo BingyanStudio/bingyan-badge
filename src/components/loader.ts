@@ -22,6 +22,11 @@ import './transforms/feedback.js';
 import './transforms/invert.js';
 import './transforms/mirror.js';
 import './transforms/posterize.js';
+import './transforms/glitch.js';
+import './transforms/scan-lines.js';
+import './transforms/grain.js';
+import './transforms/pixelate.js';
+import './transforms/barrel.js';
 
 // Lighting
 import './lighting/emboss.js';
@@ -34,6 +39,8 @@ import './color/gradient.js';
 import './color/hsl-shift.js';
 import './color/light-apply.js';
 import './color/compose.js';
+import './color/chromatic.js';
+import './color/vignette.js';
 
 // Combiners
 import './combiners/combine.js';
