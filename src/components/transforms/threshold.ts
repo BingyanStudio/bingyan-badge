@@ -4,7 +4,7 @@ import { registry } from '../../core/registry.js';
 import { ScalarField } from '../../core/fields.js';
 import { ComponentType, type Component, type PipelineContext } from '../../core/types.js';
 
-interface P { cutoff: number; softness: number; animate: number; }
+interface P { cutoff: number; softness: number; wobble: number; }
 
 const component: Component<P> = {
   id: 'xf:threshold',
@@ -12,12 +12,12 @@ const component: Component<P> = {
   params: {
     cutoff: { type: 'float', min: 0.1, max: 0.9, default: 0.5 },
     softness: { type: 'float', min: 0.01, max: 0.3, default: 0.05 },
-    animate: { type: 'float', min: 0, max: 0.3, default: 0 },
+    wobble: { type: 'float', min: 0, max: 0.3, default: 0 },
   },
-  create({ cutoff, softness, animate }) {
+  create({ cutoff, softness, wobble }) {
     return (ctx: PipelineContext, input: ScalarField) => {
       const f = new ScalarField(input.width, input.height);
-      const c = cutoff + Math.sin(ctx.t * Math.PI * 2) * animate;
+      const c = cutoff + Math.sin(ctx.t * Math.PI * 2) * wobble;
       const invSoft = softness > 0.001 ? 1 / softness : 1000;
       for (let i = 0; i < input.data.length; i++) {
         const v = (input.data[i]! - c) * invSoft + 0.5;
