@@ -3,16 +3,14 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
-// 加载所有组件和配方
 import './components/loader.js';
 
-import { renderBadge } from './core/renderer.js';
+import { renderBadge, clearGeoCache } from './core/renderer.js';
 import { getRepoShortSHA } from './core/github.js';
 import { registry } from './core/registry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// tsx 运行时 __dirname 指向 src/，项目根在上一层
 const ROOT = path.resolve(__dirname, '..');
 
 const app = express();
@@ -32,10 +30,11 @@ function loadIcon(): void {
   }
   iconSVGBuffer = fs.readFileSync(ICON_PATH);
   const stats = registry.stats();
-  console.log(`图标已加载 | 组件: ${stats.components} | 配方: icon=${stats.recipes['icon'] ?? 0} bg=${stats.recipes['bg'] ?? 0} mask=${stats.recipes['mask'] ?? 0}`);
+  console.log(`图标已加载 | 组件: ${stats.components} | 配方: mask=${stats.recipes['mask'] ?? 0}`);
 }
 
-// 缓存
+// ─── 缓存 ───
+
 const cache = new Map<string, { buffer: Buffer; timestamp: number }>();
 const CACHE_TTL = 3600_000;
 
@@ -45,16 +44,38 @@ function getCached(key: string): Buffer | null {
   if (Date.now() - entry.timestamp > CACHE_TTL) { cache.delete(key); return null; }
   return entry.buffer;
 }
+
 function setCache(key: string, buffer: Buffer): void {
   if (cache.size > 200) { cache.delete(cache.keys().next().value!); }
   cache.set(key, { buffer, timestamp: Date.now() });
 }
+
+// ─── 清除缓存 ───
+
+app.delete('/api/cache', (_req, res) => {
+  const gifCount = cache.size;
+  cache.clear();
+  clearGeoCache();
+  res.json({ cleared: true, gifEntries: gifCount });
+});
+
+// ─── 参数解析 ───
 
 function intParam(v: unknown, def: number, min: number, max: number): number {
   if (v === undefined) return def;
   const n = parseInt(v as string, 10);
   return isNaN(n) ? def : Math.max(min, Math.min(max, n));
 }
+
+function boolParam(v: unknown, def: boolean): boolean {
+  if (v === undefined) return def;
+  const s = (v as string).toLowerCase();
+  if (s === 'false' || s === '0' || s === 'no') return false;
+  if (s === 'true' || s === '1' || s === 'yes') return true;
+  return def;
+}
+
+// ─── API ───
 
 app.get('/api/badge/sha/:sha', async (req, res) => {
   try {
@@ -65,12 +86,13 @@ app.get('/api/badge/sha/:sha', async (req, res) => {
     const h = intParam(req.query['height'], 256, 32, 1024);
     const sp = intParam(req.query['speed'], 50, 20, 200);
     const fr = intParam(req.query['frames'], 30, 10, 60);
+    const tp = boolParam(req.query['transparent'], true);
 
-    const key = `${sha}_${w}_${h}_${sp}_${fr}`;
+    const key = `${sha}_${w}_${h}_${sp}_${fr}_${tp}`;
     const hit = getCached(key);
     if (hit) { res.setHeader('Content-Type', 'image/gif'); res.setHeader('Cache-Control', 'public, max-age=3600'); return res.send(hit); }
 
-    const gif = await renderBadge(iconSVGBuffer, sha, { width: w, height: h, delay: sp, frames: fr });
+    const gif = await renderBadge(iconSVGBuffer, sha, { width: w, height: h, delay: sp, frames: fr, transparent: tp });
     setCache(key, gif);
     res.setHeader('Content-Type', 'image/gif');
     res.setHeader('Cache-Control', 'public, max-age=3600');
@@ -87,12 +109,13 @@ app.get('/api/badge/:owner/:repo', async (req, res) => {
     const h = intParam(req.query['height'], 256, 32, 1024);
     const sp = intParam(req.query['speed'], 50, 20, 200);
     const fr = intParam(req.query['frames'], 30, 10, 60);
+    const tp = boolParam(req.query['transparent'], true);
 
-    const key = `${owner}_${repo}_${sha}_${w}_${h}_${sp}_${fr}`;
+    const key = `${owner}_${repo}_${sha}_${w}_${h}_${sp}_${fr}_${tp}`;
     const hit = getCached(key);
     if (hit) { res.setHeader('Content-Type', 'image/gif'); res.setHeader('Cache-Control', 'public, max-age=3600'); return res.send(hit); }
 
-    const gif = await renderBadge(iconSVGBuffer, sha, { width: w, height: h, delay: sp, frames: fr });
+    const gif = await renderBadge(iconSVGBuffer, sha, { width: w, height: h, delay: sp, frames: fr, transparent: tp });
     setCache(key, gif);
     res.setHeader('Content-Type', 'image/gif');
     res.setHeader('Cache-Control', 'public, max-age=3600');

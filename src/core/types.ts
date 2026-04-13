@@ -53,6 +53,7 @@ export interface PipelineContext {
   geo: Geometry;
   t: number;                 // 归一化时间 [0, 1)
   feedback: Record<string, ScalarField>;  // 帧间反馈存储
+  transparent: boolean;
 }
 
 // ─── 节点函数签名 ───
@@ -132,4 +133,5 @@ export interface RenderOptions {
   frames?: number;
   delay?: number;
   quality?: number;
+  transparent?: boolean;
 }

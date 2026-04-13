@@ -309,7 +309,7 @@ export function buildPipeline(rng: RNG): Pipeline {
           iconBoost = iconAvg > 2 ? Math.min(MIN_ICON_LUM / iconAvg, 5) : 1;
           if (iconAvg <= 2) iconAdd = MIN_ICON_LUM;
         }
-        if (bgAvg < MIN_BG_LUM && bgAvg > 1) {
+        if (!ctx.transparent && bgAvg < MIN_BG_LUM && bgAvg > 1) {
           bgBoost = Math.min(MIN_BG_LUM / bgAvg, 4);
         }
         calibrated = true;

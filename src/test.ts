@@ -53,7 +53,7 @@ async function main() {
     const feedback: Record<string, ScalarField> = {};
     let totalLum = 0;
     for (let f = 0; f < FRAMES; f++) {
-      const pixels = pipeline.execute({ geo, t: f / FRAMES, feedback });
+      const pixels = pipeline.execute({ geo, t: f / FRAMES, feedback, transparent: true });
       for (let i = 0; i < W * H; i++) {
         totalLum += pixels[i * 4]! * 0.299 + pixels[i * 4 + 1]! * 0.587 + pixels[i * 4 + 2]! * 0.114;
       }
@@ -73,11 +73,11 @@ async function main() {
   const pipeline = buildPipeline(rng);
   const fb0: Record<string, ScalarField> = {};
   const fb1: Record<string, ScalarField> = {};
-  const f0 = pipeline.execute({ geo, t: 0, feedback: fb0 });
+  const f0 = pipeline.execute({ geo, t: 0, feedback: fb0, transparent: true });
   // new pipeline with same seed for t=1
   const rng2 = createRNG('looptest');
   const pipeline2 = buildPipeline(rng2);
-  const f1 = pipeline2.execute({ geo, t: 1, feedback: fb1 });
+  const f1 = pipeline2.execute({ geo, t: 1, feedback: fb1, transparent: true });
   let maxDiff = 0;
   for (let i = 0; i < f0.length; i++) maxDiff = Math.max(maxDiff, Math.abs(f0[i]! - f1[i]!));
   console.log(`Loop test: maxDiff=${maxDiff} ${maxDiff <= 1 ? 'PASS' : 'FAIL'}`);
