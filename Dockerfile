@@ -3,9 +3,9 @@ FROM node:20-slim
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 COPY . .
 
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["npx", "tsx", "src/server.ts"]

@@ -1,19 +1,19 @@
-export async function getRepoShortSHA(owner, repo) {
+export async function getRepoShortSHA(owner: string, repo: string): Promise<string> {
   const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits?per_page=1`;
-  const headers = {
+  const headers: Record<string, string> = {
     'Accept': 'application/vnd.github.v3+json',
-    'User-Agent': 'BingyanBadge/1.0'
+    'User-Agent': 'BingyanBadge/1.0',
   };
-  if (process.env.GITHUB_TOKEN) {
-    headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`;
+  if (process.env['GITHUB_TOKEN']) {
+    headers['Authorization'] = `Bearer ${process.env['GITHUB_TOKEN']}`;
   }
   const res = await fetch(url, { headers });
   if (!res.ok) {
     throw new Error(`GitHub API 错误: ${res.status} ${res.statusText}`);
   }
-  const data = await res.json();
+  const data = await res.json() as Array<{ sha: string }>;
   if (!data.length) {
     throw new Error('仓库中未找到任何提交记录');
   }
-  return data[0].sha.substring(0, 7);
+  return data[0]!.sha.substring(0, 7);
 }
