@@ -1,0 +1,16 @@
+{
+  "name": "bingyan-badge",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "GitHub 仓库冰岩徽章生成器 - 基于 commit SHA 生成独特的动态 GIF 徽章",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "gif-encoder-2": "^1.0.5",
+    "sharp": "^0.33.0"
+  }
+}

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bingyan Badge - GitHub 仓库冰岩徽章</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-area">
+        <img src="/icon.svg" alt="Bingyan" class="logo">
+        <h1>Bingyan Badge</h1>
+      </div>
+      <p class="subtitle">为你的 GitHub 仓库生成独一无二的动态冰岩徽章</p>
+      <p class="description">基于仓库最新 commit SHA 确定性生成，同一仓库始终得到相同效果。每次提交后自动变化。</p>
+    </header>
+
+    <div class="input-group">
+      <input type="text" id="repoUrl"
+             placeholder="输入 GitHub 仓库链接，如 https://github.com/owner/repo" />
+      <button id="generateBtn">生成徽章</button>
+    </div>
+
+    <details class="options">
+      <summary>高级选项</summary>
+      <div class="options-grid">
+        <label>
+          宽度
+          <input type="number" id="optWidth" value="256" min="32" max="1024" step="32">
+        </label>
+        <label>
+          高度
+          <input type="number" id="optHeight" value="256" min="32" max="1024" step="32">
+        </label>
+        <label>
+          帧延迟 (ms)
+          <input type="number" id="optSpeed" value="50" min="20" max="200" step="10">
+        </label>
+        <label>
+          帧数
+          <input type="number" id="optFrames" value="30" min="10" max="60" step="5">
+        </label>
+      </div>
+    </details>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <span>正在生成动态徽章，请稍候…</span>
+    </div>
+
+    <div id="result" class="result hidden">
+      <div class="preview">
+        <h3>预览</h3>
+        <div id="gifPreview"></div>
+        <p class="sha-info">Short SHA: <code id="shaDisplay"></code></p>
+        <p class="effects-info">效果组合: <code id="effectsDisplay"></code></p>
+      </div>
+
+      <div class="links">
+        <h3>在 README 中使用</h3>
+        <div class="link-group">
+          <label>Markdown</label>
+          <div class="copy-field">
+            <input type="text" id="markdownLink" readonly />
+            <button class="copy-btn" data-target="markdownLink">复制</button>
+          </div>
+        </div>
+        <div class="link-group">
+          <label>HTML</label>
+          <div class="copy-field">
+            <input type="text" id="htmlLink" readonly />
+            <button class="copy-btn" data-target="htmlLink">复制</button>
+          </div>
+        </div>
+        <div class="link-group">
+          <label>直接链接</label>
+          <div class="copy-field">
+            <input type="text" id="directLink" readonly />
+            <button class="copy-btn" data-target="directLink">复制</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="error" class="error hidden"></div>
+
+    <section class="sha-test">
+      <h3>SHA 直接预览</h3>
+      <p>输入任意十六进制字符串，预览对应的徽章效果：</p>
+      <div class="input-group">
+        <input type="text" id="shaInput" placeholder="输入 SHA，如 abc1234" maxlength="40" />
+        <button id="shaBtn">预览</button>
+      </div>
+      <div id="shaPreview" class="preview"></div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
