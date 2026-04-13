@@ -73,5 +73,3 @@ export async function renderBadge(svgBuffer: Buffer, sha: string, options: Rende
   encoder.finish();
   return encoder.out.getData();
 }
-
-export { type Pipeline } from './pipeline.js';
