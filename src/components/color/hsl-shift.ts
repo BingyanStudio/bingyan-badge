@@ -16,7 +16,7 @@ const component: Component<P> = {
   },
   create({ hShift, sMul, lMul, hSpeed }) {
     return (ctx: PipelineContext, input: ColorField, modulator?: ScalarField) => {
-      const shift = hShift + ctx.t * hSpeed;
+      const shift = hShift + Math.sin(ctx.t * Math.PI * 2) * hSpeed * 0.5;
       const c = new ColorField(input.width, input.height);
       for (let i = 0; i < input.r.length; i++) {
         let [h, s, l] = rgbToHsl(input.r[i]!, input.g[i]!, input.b[i]!);

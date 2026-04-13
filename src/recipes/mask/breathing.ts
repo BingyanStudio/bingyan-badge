@@ -7,7 +7,7 @@ const recipe: Recipe = {
   id: 'mask:breathing',
   slot: RecipeSlot.MASK,
   build(rng: RNG, _reg: ComponentRegistryReader) {
-    const freq = rng.range(0.5, 2);
+    const freq = rng.randInt(1, 3);
     const amplitude = rng.range(1, 4);
     return (ctx: PipelineContext) => {
       const { width: w, height: h, sdf } = ctx.geo;

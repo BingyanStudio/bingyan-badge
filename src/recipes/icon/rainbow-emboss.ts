@@ -10,14 +10,14 @@ const recipe: Recipe = {
   build(rng: RNG, _reg: ComponentRegistryReader) {
     const arc = registry.get('src:arc')!.create({});
     const sdf = registry.get('src:sdf')!.create({ normalize: rng.range(15, 35) });
-    const time = registry.get('src:time')!.create({ waveform: 'saw', freq: rng.range(0.2, 1), phase: rng.random() });
+    const time = registry.get('src:time')!.create({ waveform: 'saw', freq: rng.randInt(1, 3), phase: rng.random() });
     const startH = rng.random();
     const stops: GradientStop[] = Array.from({ length: 8 }, (_, i) => ({
       pos: i / 7, h: (startH + i / 7) % 1, s: rng.range(0.8, 1), l: rng.range(0.4, 0.65),
     }));
     const grad = registry.get('col:gradient')!.create({ stops });
-    const emboss = registry.get('lit:emboss')!.create({ angle: rng.range(0, 6.28), elev: rng.range(0.4, 0.8), rotateSpeed: rng.range(0.5, 3), depth: rng.range(1, 2.5) });
-    const spec = registry.get('lit:specular')!.create({ angle: rng.range(0, 6.28), power: rng.range(12, 30), rotateSpeed: rng.range(1, 4) });
+    const emboss = registry.get('lit:emboss')!.create({ angle: rng.range(0, 6.28), elev: rng.range(0.4, 0.8), rotateSpeed: rng.randInt(1, 3), depth: rng.range(1, 2.5) });
+    const spec = registry.get('lit:specular')!.create({ angle: rng.range(0, 6.28), power: rng.range(12, 30), rotateSpeed: rng.randInt(1, 3) });
     const mixAmt = rng.range(0.3, 0.7);
 
     return (ctx: PipelineContext) => {

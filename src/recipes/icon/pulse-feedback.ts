@@ -16,11 +16,11 @@ const recipe: Recipe = {
   slot: RecipeSlot.ICON,
   build(rng: RNG, _reg: ComponentRegistryReader) {
     const edge = registry.get('xf:edge')!.create({ inner: rng.range(2, 6), outer: rng.range(2, 6), softness: rng.range(0.5, 2) });
-    const time = registry.get('src:time')!.create({ waveform: rng.pick(['sin', 'exp', 'tri']), freq: rng.range(1, 4), phase: 0 });
+    const time = registry.get('src:time')!.create({ waveform: rng.pick(['sin', 'exp', 'tri']), freq: rng.randInt(1, 3), phase: 0 });
     const feedback = registry.get('xf:feedback')!.create({ decay: rng.range(0.7, 0.92), key: 'fb_a' });
     const sdf = registry.get('src:sdf')!.create({ normalize: rng.range(15, 30) });
     const grad = registry.get('col:gradient')!.create({ stops: iridescent(rng) });
-    const emboss = registry.get('lit:emboss')!.create({ angle: rng.range(0, 6.28), rotateSpeed: rng.range(1, 3), depth: rng.range(0.8, 2) });
+    const emboss = registry.get('lit:emboss')!.create({ angle: rng.range(0, 6.28), rotateSpeed: rng.randInt(1, 3), depth: rng.range(0.8, 2) });
 
     return (ctx: PipelineContext) => {
       const edgeF = edge(ctx) as ScalarField;

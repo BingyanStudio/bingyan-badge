@@ -19,7 +19,8 @@ const component: Component<P> = {
     return (ctx: PipelineContext) => {
       const { width: w, height: h } = ctx.geo;
       const f = new ScalarField(w, h);
-      const ox = ctx.t * scrollX, oy = ctx.t * scrollY;
+      const angle = ctx.t * Math.PI * 2;
+      const ox = Math.sin(angle) * scrollX, oy = Math.cos(angle) * scrollY;
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           f.data[y * w + x] = fbm(x / w * scale + ox, y / h * scale + oy, octaves, seed);

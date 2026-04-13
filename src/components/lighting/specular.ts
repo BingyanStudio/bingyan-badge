@@ -14,7 +14,7 @@ const component: Component<P> = {
   },
   create({ angle, power, rotateSpeed }) {
     return (ctx: PipelineContext) => {
-      const a = angle + ctx.t * rotateSpeed;
+      const a = angle + ctx.t * Math.PI * 2 * rotateSpeed;
       const lx = Math.cos(a), ly = Math.sin(a);
       const { width: w, height: h, normalX, normalY, insideMask } = ctx.geo;
       const f = new ScalarField(w, h);

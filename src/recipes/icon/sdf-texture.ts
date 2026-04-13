@@ -20,8 +20,8 @@ const recipe: Recipe = {
     // ensure monotonic pos
     stops.forEach((s, i) => { s.pos = i / (stops.length - 1); });
     const grad = registry.get('col:gradient')!.create({ stops });
-    const spec = registry.get('lit:specular')!.create({ angle: rng.range(0, 6.28), power: rng.range(10, 30), rotateSpeed: rng.range(1, 5) });
-    const emboss = registry.get('lit:emboss')!.create({ angle: rng.range(0, 6.28), rotateSpeed: rng.range(0.5, 2), depth: rng.range(0.8, 2) });
+    const spec = registry.get('lit:specular')!.create({ angle: rng.range(0, 6.28), power: rng.range(10, 30), rotateSpeed: rng.randInt(1, 3) });
+    const emboss = registry.get('lit:emboss')!.create({ angle: rng.range(0, 6.28), rotateSpeed: rng.randInt(1, 3), depth: rng.range(0.8, 2) });
 
     return (ctx: PipelineContext) => {
       const sdfF = sdf(ctx) as ScalarField;

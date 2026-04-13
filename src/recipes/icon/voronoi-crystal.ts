@@ -18,8 +18,8 @@ const recipe: Recipe = {
     const vor = registry.get('src:voronoi')!.create({ scale: rng.range(4, 10), seed: rng.randInt(0, 9999), mode: rng.pick(['dist', 'edge']), scroll: rng.range(0.5, 3) });
     const maskSrc = registry.get('src:mask')!.create({});
     const grad = registry.get('col:gradient')!.create({ stops: iridescent(rng) });
-    const rim = registry.get('lit:rim')!.create({ edgeWidth: rng.range(5, 15), softness: rng.range(1, 3), pulse: rng.range(0.2, 0.8), pulseFreq: rng.range(0.5, 2) });
-    const emboss = registry.get('lit:emboss')!.create({ angle: rng.range(0, 6.28), rotateSpeed: rng.range(1, 3), depth: rng.range(0.5, 1.5) });
+    const rim = registry.get('lit:rim')!.create({ edgeWidth: rng.range(5, 15), softness: rng.range(1, 3), pulse: rng.range(0.2, 0.8), pulseFreq: rng.randInt(1, 3) });
+    const emboss = registry.get('lit:emboss')!.create({ angle: rng.range(0, 6.28), rotateSpeed: rng.randInt(1, 3), depth: rng.range(0.5, 1.5) });
 
     return (ctx: PipelineContext) => {
       const vorF = vor(ctx) as ScalarField;

@@ -15,7 +15,7 @@ const recipe: Recipe = {
       { pos: 1, h: (h + 0.05) % 1, s: rng.range(0.2, 0.4), l: rng.range(0.01, 0.04) },
     ];
     const grad = registry.get('col:gradient')!.create({ stops });
-    const pulseFreq = rng.range(0.5, 2);
+    const pulseFreq = rng.randInt(1, 3);
     const pulseAmp = rng.range(0.1, 0.3);
 
     return (ctx: PipelineContext) => {

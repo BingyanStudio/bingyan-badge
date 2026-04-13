@@ -20,7 +20,7 @@ const recipe: Recipe = {
     }));
     stops.forEach((s, i) => { s.pos = i / (stops.length - 1); });
     const grad = registry.get('col:gradient')!.create({ stops });
-    const emboss = registry.get('lit:emboss')!.create({ angle: rng.range(0, 6.28), rotateSpeed: rng.range(0.5, 2), depth: rng.range(1, 2) });
+    const emboss = registry.get('lit:emboss')!.create({ angle: rng.range(0, 6.28), rotateSpeed: rng.randInt(1, 3), depth: rng.range(1, 2) });
 
     return (ctx: PipelineContext) => {
       const sdfF = sdf(ctx) as ScalarField;

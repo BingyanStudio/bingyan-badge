@@ -15,13 +15,13 @@ const recipe: Recipe = {
   id: 'icon:emboss-arc-flow',
   slot: RecipeSlot.ICON,
   build(rng: RNG, _reg: ComponentRegistryReader) {
-    const emboss = registry.get('lit:emboss')!.create({ angle: rng.range(0, 6.28), elev: rng.range(0.3, 0.8), rotateSpeed: rng.range(0.5, 3), depth: rng.range(0.5, 2) });
+    const emboss = registry.get('lit:emboss')!.create({ angle: rng.range(0, 6.28), elev: rng.range(0.3, 0.8), rotateSpeed: rng.randInt(1, 3), depth: rng.range(0.5, 2) });
     const ao = registry.get('lit:ao')!.create({ range: rng.range(10, 30), strength: rng.range(0.3, 0.7) });
     const arcSrc = registry.get('src:arc')!.create({});
-    const timeSrc = registry.get('src:time')!.create({ waveform: 'saw', freq: rng.range(0.3, 1.5), phase: rng.random() });
+    const timeSrc = registry.get('src:time')!.create({ waveform: 'saw', freq: rng.randInt(1, 3), phase: rng.random() });
     const grad = registry.get('col:gradient')!.create({ stops: iridescent(rng) });
     const lightApply = registry.get('col:light-apply')!.create({ mode: 'multiply' });
-    const spec = registry.get('lit:specular')!.create({ angle: rng.range(0, 6.28), power: rng.range(8, 40), rotateSpeed: rng.range(1, 4) });
+    const spec = registry.get('lit:specular')!.create({ angle: rng.range(0, 6.28), power: rng.range(8, 40), rotateSpeed: rng.randInt(1, 3) });
 
     return (ctx: PipelineContext) => {
       const arcF = arcSrc(ctx) as ScalarField;
