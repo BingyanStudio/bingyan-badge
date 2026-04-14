@@ -82,11 +82,17 @@ app.get('/api/badge/sha/:sha', async (req, res) => {
     const sha = req.params['sha']!.replace(/[^0-9a-fA-F]/g, '').substring(0, 40);
     if (sha.length < 4) return res.status(400).json({ error: 'SHA 至少 4 位十六进制' });
 
-    const w = intParam(req.query['width'], 256, 32, 1024);
-    const h = intParam(req.query['height'], 256, 32, 1024);
+    const w = intParam(req.query['width'], 256, 32, 512);
+    const h = intParam(req.query['height'], 256, 32, 512);
     const sp = intParam(req.query['speed'], 50, 20, 200);
-    const fr = intParam(req.query['frames'], 60, 10, 120);
+    const fr = intParam(req.query['frames'], 60, 10, 60);
     const tp = boolParam(req.query['transparent'], true);
+
+    const totalPixels = w * h * fr;
+    const MAX_BUDGET = 512 * 512 * 60; // ~15.7M pixels
+    if (totalPixels > MAX_BUDGET) {
+      return res.status(400).json({ error: `渲染量超限：${w}×${h}×${fr} = ${totalPixels} 像素，上限 ${MAX_BUDGET}` });
+    }
 
     const key = `${sha}_${w}_${h}_${sp}_${fr}_${tp}`;
     const hit = getCached(key);
@@ -105,11 +111,17 @@ app.get('/api/badge/:owner/:repo', async (req, res) => {
     const { owner, repo } = req.params;
     const sha = await getRepoShortSHA(owner!, repo!);
 
-    const w = intParam(req.query['width'], 256, 32, 1024);
-    const h = intParam(req.query['height'], 256, 32, 1024);
+    const w = intParam(req.query['width'], 256, 32, 512);
+    const h = intParam(req.query['height'], 256, 32, 512);
     const sp = intParam(req.query['speed'], 50, 20, 200);
-    const fr = intParam(req.query['frames'], 60, 10, 120);
+    const fr = intParam(req.query['frames'], 60, 10, 60);
     const tp = boolParam(req.query['transparent'], true);
+
+    const totalPixels = w * h * fr;
+    const MAX_BUDGET = 512 * 512 * 60; // ~15.7M pixels
+    if (totalPixels > MAX_BUDGET) {
+      return res.status(400).json({ error: `渲染量超限：${w}×${h}×${fr} = ${totalPixels} 像素，上限 ${MAX_BUDGET}` });
+    }
 
     const key = `${owner}_${repo}_${sha}_${w}_${h}_${sp}_${fr}_${tp}`;
     const hit = getCached(key);
