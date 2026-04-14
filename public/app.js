@@ -15,7 +15,7 @@ function getOptions() {
   const params = new URLSearchParams();
   if (width !== '256') params.set('width', width);
   if (height !== '256') params.set('height', height);
-  if (speed !== '70') params.set('speed', speed);
+  if (speed !== '60') params.set('speed', speed);
   if (frames !== '60') params.set('frames', frames);
   return params.toString() ? '?' + params.toString() : '';
 }
