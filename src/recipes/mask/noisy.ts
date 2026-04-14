@@ -19,7 +19,6 @@ const recipe: Recipe = {
       for (let i = 0; i < w * h; i++) {
         const px = (i % w) / w * scale + ox;
         const py = Math.floor(i / w) / h * scale + oy;
-        // voronoi dist 产生多边形碎片轮廓，边缘是直线段和尖角
         const { dist } = voronoi(px, py, seed);
         const noiseOffset = (dist - 0.4) * amplitude * 2;
         f.data[i] = Math.max(0, Math.min(1, -(sdf[i]! + noiseOffset) / 1.5));
