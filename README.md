@@ -1,3 +1,4 @@
+![Bingyan Badge](https://bingyan-badge.onrender.com/api/badge/BingyanStudio/bingyan-badge)
 # Bingyan Badge
 
 为 GitHub 仓库生成独一无二的动态冰岩徽章。基于仓库最新 commit SHA 确定性生成 GIF 动画。
