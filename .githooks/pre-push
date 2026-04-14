@@ -1,0 +1,10 @@
+#!/bin/bash
+# 当推送到 main 分支时自动运行 CI 检查
+# 安装：git config core.hooksPath .githooks
+
+while read local_ref local_sha remote_ref remote_sha; do
+  if echo "$remote_ref" | grep -q "refs/heads/main"; then
+    echo "推送到 main，运行本地 CI..."
+    exec ./scripts/pre-push-check.sh
+  fi
+done
