@@ -91,15 +91,15 @@ function boolParam(v: unknown, def: boolean): boolean {
 }
 
 function parseRenderParams(query: Record<string, unknown>) {
-  const w = intParam(query['width'], 256, 32, 512);
-  const h = intParam(query['height'], 256, 32, 512);
+  const w = intParam(query['width'], 256, 32, 384);
+  const h = intParam(query['height'], 256, 32, 384);
   const sp = intParam(query['speed'], 50, 20, 200);
-  const fr = intParam(query['frames'], 60, 10, 60);
+  const fr = intParam(query['frames'], 30, 10, 60);
   const tp = boolParam(query['transparent'], true);
   return { w, h, sp, fr, tp };
 }
 
-const MAX_BUDGET = 512 * 512 * 60;
+const MAX_BUDGET = 384 * 384 * 60;
 
 function checkBudget(w: number, h: number, fr: number): string | null {
   const total = w * h * fr;

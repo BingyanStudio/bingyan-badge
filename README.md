@@ -94,7 +94,7 @@ npm run check        # tsc --noEmit
 | `GET /api/badge/sha/:sha` | 任意 SHA 直接生成 |
 | `POST /api/generate` | 解析仓库链接，返回元数据 |
 
-**查询参数：** `width` (默认256, 上限512), `height` (默认256, 上限512), `speed` (默认50ms), `frames` (默认60, 上限60)。总像素量 width×height×frames 不得超过 15,728,640。
+**查询参数：** `width` (默认256, 上限384), `height` (默认256, 上限384), `speed` (默认50ms), `frames` (默认30, 上限60)。总像素量 width×height×frames 不得超过 8,847,360。
 
 ### Docker 部署
 
