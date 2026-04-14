@@ -16,12 +16,11 @@ export function clearGeoCache(): void {
   geoCache.clear();
 }
 
-function getGeometry(width: number, height: number): Geometry {
+function getGeometry(width: number, height: number): { geo: Geometry; geoCached: boolean } {
   const key = `${width}x${height}`;
   const cached = geoCache.get(key);
-  if (cached) return cached;
+  if (cached) return { geo: cached, geoCached: true };
 
-  // path-engine 的 nonzero winding number 对此 SVG 路径足够精确，无需 sharp 光栅化校验
   const geo = buildGeometry(SVG_PATH, VIEW_BOX, TRANSFORM, width, height);
 
   if (geoCache.size > 10) {
@@ -29,10 +28,27 @@ function getGeometry(width: number, height: number): Geometry {
     geoCache.delete(oldest);
   }
   geoCache.set(key, geo);
-  return geo;
+  return { geo, geoCached: false };
 }
 
-export async function renderBadge(sha: string, options: RenderOptions = {}): Promise<Buffer> {
+export interface RenderTiming {
+  geometry: number;
+  geoCached: boolean;
+  pipelineBuild: number;
+  pipelineFrames: number;
+  pipelineAvgFrame: number;
+  gifEncode: number;
+  total: number;
+  gifBytes: number;
+  pipeline: string;
+}
+
+export interface RenderResult {
+  buffer: Buffer;
+  timing: RenderTiming;
+}
+
+export async function renderBadge(sha: string, options: RenderOptions = {}): Promise<RenderResult> {
   const {
     width = 256,
     height = 256,
@@ -42,10 +58,18 @@ export async function renderBadge(sha: string, options: RenderOptions = {}): Pro
     transparent = true,
   } = options;
 
-  const geo = getGeometry(width, height);
+  const totalStart = performance.now();
+
+  const geoStart = performance.now();
+  const { geo, geoCached } = getGeometry(width, height);
+  const geometryMs = performance.now() - geoStart;
+
+  const buildStart = performance.now();
   const rng = createRNG(sha);
   const pipeline = buildPipeline(rng);
+  const pipelineBuildMs = performance.now() - buildStart;
 
+  const framesStart = performance.now();
   const encoder = new GIFEncoder(width, height, 'octree', true);
   encoder.setDelay(delay);
   encoder.setRepeat(0);
@@ -58,13 +82,38 @@ export async function renderBadge(sha: string, options: RenderOptions = {}): Pro
   encoder.start();
 
   const feedback: Record<string, ScalarField> = {};
+  const framePixels: Uint8ClampedArray[] = [];
 
   for (let f = 0; f < frames; f++) {
     const ctx: PipelineContext = { geo, t: f / frames, feedback, transparent };
-    const pixels = pipeline.execute(ctx);
+    framePixels.push(pipeline.execute(ctx));
+  }
+  const pipelineFramesMs = performance.now() - framesStart;
+
+  const encodeStart = performance.now();
+  for (const pixels of framePixels) {
     encoder.addFrame(pixels);
   }
-
   encoder.finish();
-  return encoder.out.getData();
+  const gifEncodeMs = performance.now() - encodeStart;
+
+  const buffer = encoder.out.getData();
+  const totalMs = performance.now() - totalStart;
+  const desc = pipeline.desc;
+  const pipelineStr = `icon=[${desc.icon.join(' > ')}] bg=[${desc.bg.join(' > ')}] mask=${desc.mask}`;
+
+  return {
+    buffer,
+    timing: {
+      geometry: Math.round(geometryMs),
+      geoCached,
+      pipelineBuild: Math.round(pipelineBuildMs),
+      pipelineFrames: Math.round(pipelineFramesMs),
+      pipelineAvgFrame: Math.round(pipelineFramesMs / frames),
+      gifEncode: Math.round(gifEncodeMs),
+      total: Math.round(totalMs),
+      gifBytes: buffer.length,
+      pipeline: pipelineStr,
+    },
+  };
 }

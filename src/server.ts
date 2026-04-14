@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 
 import './components/loader.js';
 
-import { renderBadge, clearGeoCache } from './core/renderer.js';
+import { renderBadge, clearGeoCache, type RenderTiming } from './core/renderer.js';
 import { getRepoShortSHA } from './core/github.js';
 import { registry } from './core/registry.js';
 
@@ -16,6 +16,7 @@ const app = express();
 const PORT = process.env['PORT'] || 3000;
 
 app.use(express.json());
+app.use((_req, res, next) => { res.setHeader('Access-Control-Expose-Headers', 'X-Render-Timing'); next(); });
 app.use(express.static(path.join(ROOT, 'public')));
 app.get('/icon.svg', (_req, res) => { res.type('image/svg+xml'); res.sendFile(path.join(ROOT, 'icon.svg')); });
 
@@ -116,6 +117,7 @@ async function handleRender(res: express.Response, cacheKey: string, sha: string
   if (hit) {
     res.setHeader('Content-Type', 'image/gif');
     res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('X-Render-Timing', JSON.stringify({ cached: true }));
     return res.send(hit);
   }
 
@@ -125,11 +127,12 @@ async function handleRender(res: express.Response, cacheKey: string, sha: string
 
   activeRenders++;
   try {
-    const gif = await renderBadge(sha, { width: w, height: h, delay: sp, frames: fr, transparent: tp });
-    setCache(cacheKey, gif);
+    const { buffer, timing } = await renderBadge(sha, { width: w, height: h, delay: sp, frames: fr, transparent: tp });
+    setCache(cacheKey, buffer);
     res.setHeader('Content-Type', 'image/gif');
     res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.send(gif);
+    res.setHeader('X-Render-Timing', JSON.stringify(timing));
+    res.send(buffer);
   } finally {
     activeRenders--;
   }

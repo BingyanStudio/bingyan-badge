@@ -271,3 +271,85 @@ button:active {
 #shaPreview img {
   margin-top: 16px;
 }
+
+/* ─── Timing Panel ─── */
+
+.timing-panel {
+  margin-top: 16px;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  font-size: 0.82em;
+  text-align: left;
+}
+
+.timing-panel summary {
+  cursor: pointer;
+  padding: 8px 12px;
+  color: #8b949e;
+  user-select: none;
+}
+
+.timing-panel summary:hover {
+  color: #c9d1d9;
+}
+
+.timing-content {
+  padding: 4px 12px 12px;
+}
+
+.timing-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  border-bottom: 1px solid #161b22;
+}
+
+.timing-row:last-of-type {
+  border-bottom: none;
+}
+
+.timing-row.timing-total {
+  font-weight: 600;
+  color: #f5aa3f;
+  border-top: 1px solid #30363d;
+  margin-top: 4px;
+  padding-top: 6px;
+}
+
+.timing-label {
+  color: #8b949e;
+}
+
+.timing-value {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  color: #c9d1d9;
+}
+
+.timing-note {
+  font-size: 0.85em;
+  color: #6e7681;
+}
+
+.timing-tag {
+  font-size: 0.8em;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.timing-hit {
+  background: #1b4332;
+  color: #2dd4bf;
+}
+
+.timing-pipeline {
+  margin-top: 8px;
+  padding: 8px;
+  background: #0d1117;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.9em;
+  color: #6e7681;
+  word-break: break-all;
+  line-height: 1.5;
+}
