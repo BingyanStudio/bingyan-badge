@@ -241,7 +241,7 @@ export function buildGeometry(
       // Search expanding rings of grid cells until we can't find closer
       for (let ring = 0; ring <= Math.max(gridW, gridH); ring++) {
         // Early exit: if best distance is less than the closest possible point in outer rings
-        if (ring > 0 && minDist < (ring - 1) * cellSize) break;
+        if (ring > 0 && minDist < ((ring - 1) * cellSize) * ((ring - 1) * cellSize)) break;
 
         for (let gdy = gcy - ring; gdy <= gcy + ring; gdy++) {
           for (let gdx = gcx - ring; gdx <= gcx + ring; gdx++) {
@@ -259,7 +259,7 @@ export function buildGeometry(
         if (minDist < Infinity) {
           // Check if we need to search further
           const nextRingMinDist = ring * cellSize;
-          if (Math.sqrt(minDist) <= nextRingMinDist) break;
+          if (minDist <= nextRingMinDist * nextRingMinDist) break;
         }
       }
 
@@ -272,28 +272,59 @@ export function buildGeometry(
   }
 
   // nonzero winding number → insideMask + signed SDF
+  // Scanline approach: pre-collect edges that cross each row, then sweep per row
   const sdf = new Float32Array(width * height);
   const insideMask = new Uint8Array(width * height);
 
+  // Collect all edge segments (pairs of consecutive pixelPoints)
+  interface Edge { ax: number; ay: number; bx: number; by: number; }
+  const allEdges: Edge[] = [];
+  for (const sp of subPathData) {
+    const pts = sp.pixelPoints;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i]!, b = pts[(i + 1) % pts.length]!;
+      allEdges.push({ ax: a.px, ay: a.py, bx: b.px, by: b.py });
+    }
+  }
+
+  // Bin edges by the rows they span
+  const edgesByRow: number[][] = new Array(height);
+  for (let y = 0; y < height; y++) edgesByRow[y] = [];
+  for (let ei = 0; ei < allEdges.length; ei++) {
+    const e = allEdges[ei]!;
+    const yMin = Math.floor(Math.min(e.ay, e.by));
+    const yMax = Math.ceil(Math.max(e.ay, e.by));
+    for (let y = Math.max(0, yMin); y < Math.min(height, yMax + 1); y++) {
+      edgesByRow[y]!.push(ei);
+    }
+  }
+
   for (let py = 0; py < height; py++) {
-    for (let px = 0; px < width; px++) {
-      let winding = 0;
-      for (const sp of subPathData) {
-        const pts = sp.pixelPoints;
-        for (let i = 0; i < pts.length; i++) {
-          const a = pts[i]!, b = pts[(i + 1) % pts.length]!;
-          if (a.py <= py) {
-            if (b.py > py) {
-              const ix = a.px + (py - a.py) / (b.py - a.py) * (b.px - a.px);
-              if (px < ix) winding++;
-            }
-          } else {
-            if (b.py <= py) {
-              const ix = a.px + (py - a.py) / (b.py - a.py) * (b.px - a.px);
-              if (px < ix) winding--;
-            }
-          }
+    // Compute winding number for all px in this row using only relevant edges
+    const rowEdges = edgesByRow[py]!;
+    // Collect all x-crossings with their winding direction
+    const crossings: { x: number; dir: number }[] = [];
+    for (const ei of rowEdges) {
+      const e = allEdges[ei]!;
+      if (e.ay <= py) {
+        if (e.by > py) {
+          crossings.push({ x: e.ax + (py - e.ay) / (e.by - e.ay) * (e.bx - e.ax), dir: 1 });
         }
+      } else {
+        if (e.by <= py) {
+          crossings.push({ x: e.ax + (py - e.ay) / (e.by - e.ay) * (e.bx - e.ax), dir: -1 });
+        }
+      }
+    }
+    // Sort crossings by x
+    crossings.sort((a, b) => a.x - b.x);
+
+    // Sweep across pixels
+    let ci = 0, winding = 0;
+    for (let px = 0; px < width; px++) {
+      while (ci < crossings.length && crossings[ci]!.x <= px) {
+        winding += crossings[ci]!.dir;
+        ci++;
       }
       const idx = py * width + px;
       const inside = winding !== 0;
