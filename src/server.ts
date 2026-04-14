@@ -1,6 +1,5 @@
 import express from 'express';
 import path from 'path';
-import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 import './components/loader.js';
@@ -15,46 +14,62 @@ const ROOT = path.resolve(__dirname, '..');
 
 const app = express();
 const PORT = process.env['PORT'] || 3000;
-const ICON_PATH = path.join(ROOT, 'icon.svg');
 
 app.use(express.json());
 app.use(express.static(path.join(ROOT, 'public')));
-app.get('/icon.svg', (_req, res) => { res.type('image/svg+xml'); res.sendFile(ICON_PATH); });
+app.get('/icon.svg', (_req, res) => { res.type('image/svg+xml'); res.sendFile(path.join(ROOT, 'icon.svg')); });
 
-let iconSVGBuffer: Buffer;
-
-function loadIcon(): void {
-  if (!fs.existsSync(ICON_PATH)) {
-    console.error('icon.svg 不存在，请将图标文件放在项目根目录');
-    process.exit(1);
-  }
-  iconSVGBuffer = fs.readFileSync(ICON_PATH);
+function logStartup(): void {
   const stats = registry.stats();
-  console.log(`图标已加载 | 组件: ${stats.components} | 配方: mask=${stats.recipes['mask'] ?? 0}`);
+  console.log(`组件: ${stats.components} | 配方: mask=${stats.recipes['mask'] ?? 0}`);
 }
 
-// ─── 缓存 ───
+// ─── GIF 缓存（条目数 + 总字节双重上限）───
 
 const cache = new Map<string, { buffer: Buffer; timestamp: number }>();
 const CACHE_TTL = 3600_000;
+const CACHE_MAX_ENTRIES = 200;
+const CACHE_MAX_BYTES = 100 * 1024 * 1024; // 100 MB
+let cacheBytes = 0;
 
 function getCached(key: string): Buffer | null {
   const entry = cache.get(key);
   if (!entry) return null;
-  if (Date.now() - entry.timestamp > CACHE_TTL) { cache.delete(key); return null; }
+  if (Date.now() - entry.timestamp > CACHE_TTL) {
+    cacheBytes -= entry.buffer.length;
+    cache.delete(key);
+    return null;
+  }
   return entry.buffer;
 }
 
-function setCache(key: string, buffer: Buffer): void {
-  if (cache.size > 200) { cache.delete(cache.keys().next().value!); }
-  cache.set(key, { buffer, timestamp: Date.now() });
+function evictOldest(): void {
+  const oldest = cache.keys().next().value!;
+  const entry = cache.get(oldest)!;
+  cacheBytes -= entry.buffer.length;
+  cache.delete(oldest);
 }
+
+function setCache(key: string, buffer: Buffer): void {
+  while (cache.size >= CACHE_MAX_ENTRIES || cacheBytes + buffer.length > CACHE_MAX_BYTES) {
+    if (cache.size === 0) break;
+    evictOldest();
+  }
+  cache.set(key, { buffer, timestamp: Date.now() });
+  cacheBytes += buffer.length;
+}
+
+// ─── 并发渲染限制 ───
+
+const MAX_CONCURRENT_RENDERS = 2;
+let activeRenders = 0;
 
 // ─── 清除缓存 ───
 
 app.delete('/api/cache', (_req, res) => {
   const gifCount = cache.size;
   cache.clear();
+  cacheBytes = 0;
   clearGeoCache();
   res.json({ cleared: true, gifEntries: gifCount });
 });
@@ -75,6 +90,51 @@ function boolParam(v: unknown, def: boolean): boolean {
   return def;
 }
 
+function parseRenderParams(query: Record<string, unknown>) {
+  const w = intParam(query['width'], 256, 32, 512);
+  const h = intParam(query['height'], 256, 32, 512);
+  const sp = intParam(query['speed'], 50, 20, 200);
+  const fr = intParam(query['frames'], 60, 10, 60);
+  const tp = boolParam(query['transparent'], true);
+  return { w, h, sp, fr, tp };
+}
+
+const MAX_BUDGET = 512 * 512 * 60;
+
+function checkBudget(w: number, h: number, fr: number): string | null {
+  const total = w * h * fr;
+  if (total > MAX_BUDGET) {
+    return `渲染量超限：${w}×${h}×${fr} = ${total} 像素，上限 ${MAX_BUDGET}`;
+  }
+  return null;
+}
+
+// ─── 通用渲染 + 缓存逻辑 ───
+
+async function handleRender(res: express.Response, cacheKey: string, sha: string, w: number, h: number, sp: number, fr: number, tp: boolean) {
+  const hit = getCached(cacheKey);
+  if (hit) {
+    res.setHeader('Content-Type', 'image/gif');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.send(hit);
+  }
+
+  if (activeRenders >= MAX_CONCURRENT_RENDERS) {
+    return res.status(503).json({ error: '服务器繁忙，请稍后重试' });
+  }
+
+  activeRenders++;
+  try {
+    const gif = await renderBadge(sha, { width: w, height: h, delay: sp, frames: fr, transparent: tp });
+    setCache(cacheKey, gif);
+    res.setHeader('Content-Type', 'image/gif');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(gif);
+  } finally {
+    activeRenders--;
+  }
+}
+
 // ─── API ───
 
 app.get('/api/badge/sha/:sha', async (req, res) => {
@@ -82,27 +142,12 @@ app.get('/api/badge/sha/:sha', async (req, res) => {
     const sha = req.params['sha']!.replace(/[^0-9a-fA-F]/g, '').substring(0, 40);
     if (sha.length < 4) return res.status(400).json({ error: 'SHA 至少 4 位十六进制' });
 
-    const w = intParam(req.query['width'], 256, 32, 512);
-    const h = intParam(req.query['height'], 256, 32, 512);
-    const sp = intParam(req.query['speed'], 50, 20, 200);
-    const fr = intParam(req.query['frames'], 60, 10, 60);
-    const tp = boolParam(req.query['transparent'], true);
-
-    const totalPixels = w * h * fr;
-    const MAX_BUDGET = 512 * 512 * 60; // ~15.7M pixels
-    if (totalPixels > MAX_BUDGET) {
-      return res.status(400).json({ error: `渲染量超限：${w}×${h}×${fr} = ${totalPixels} 像素，上限 ${MAX_BUDGET}` });
-    }
+    const { w, h, sp, fr, tp } = parseRenderParams(req.query);
+    const err = checkBudget(w, h, fr);
+    if (err) return res.status(400).json({ error: err });
 
     const key = `${sha}_${w}_${h}_${sp}_${fr}_${tp}`;
-    const hit = getCached(key);
-    if (hit) { res.setHeader('Content-Type', 'image/gif'); res.setHeader('Cache-Control', 'public, max-age=3600'); return res.send(hit); }
-
-    const gif = await renderBadge(iconSVGBuffer, sha, { width: w, height: h, delay: sp, frames: fr, transparent: tp });
-    setCache(key, gif);
-    res.setHeader('Content-Type', 'image/gif');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.send(gif);
+    await handleRender(res, key, sha, w, h, sp, fr, tp);
   } catch (err: any) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
@@ -111,27 +156,12 @@ app.get('/api/badge/:owner/:repo', async (req, res) => {
     const { owner, repo } = req.params;
     const sha = await getRepoShortSHA(owner!, repo!);
 
-    const w = intParam(req.query['width'], 256, 32, 512);
-    const h = intParam(req.query['height'], 256, 32, 512);
-    const sp = intParam(req.query['speed'], 50, 20, 200);
-    const fr = intParam(req.query['frames'], 60, 10, 60);
-    const tp = boolParam(req.query['transparent'], true);
-
-    const totalPixels = w * h * fr;
-    const MAX_BUDGET = 512 * 512 * 60; // ~15.7M pixels
-    if (totalPixels > MAX_BUDGET) {
-      return res.status(400).json({ error: `渲染量超限：${w}×${h}×${fr} = ${totalPixels} 像素，上限 ${MAX_BUDGET}` });
-    }
+    const { w, h, sp, fr, tp } = parseRenderParams(req.query);
+    const err = checkBudget(w, h, fr);
+    if (err) return res.status(400).json({ error: err });
 
     const key = `${owner}_${repo}_${sha}_${w}_${h}_${sp}_${fr}_${tp}`;
-    const hit = getCached(key);
-    if (hit) { res.setHeader('Content-Type', 'image/gif'); res.setHeader('Cache-Control', 'public, max-age=3600'); return res.send(hit); }
-
-    const gif = await renderBadge(iconSVGBuffer, sha, { width: w, height: h, delay: sp, frames: fr, transparent: tp });
-    setCache(key, gif);
-    res.setHeader('Content-Type', 'image/gif');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.send(gif);
+    await handleRender(res, key, sha, w, h, sp, fr, tp);
   } catch (err: any) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
@@ -148,5 +178,5 @@ app.post('/api/generate', async (req, res) => {
   } catch (err: any) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
-loadIcon();
+logStartup();
 app.listen(PORT, () => { console.log(`Bingyan Badge 运行于 http://localhost:${PORT}`); });
