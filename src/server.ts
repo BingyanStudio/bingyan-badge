@@ -139,6 +139,7 @@ async function handleRender(res: express.Response, cacheKey: string, sha: string
 }
 
 // ─── API ───
+// 注意：/text/:text 必须在 /:owner/:repo 之前，否则 "text" 会被当作 owner
 
 app.get('/api/badge/sha/:sha', async (req, res) => {
   try {
@@ -151,6 +152,21 @@ app.get('/api/badge/sha/:sha', async (req, res) => {
 
     const key = `${sha}_${w}_${h}_${sp}_${fr}_${tp}`;
     await handleRender(res, key, sha, w, h, sp, fr, tp);
+  } catch (err: any) { console.error(err); res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/badge/text/:text', async (req, res) => {
+  try {
+    const text = req.params['text']!.trim();
+    if (text.length < 1) return res.status(400).json({ error: '文本不能为空' });
+    if (text.length > 200) return res.status(400).json({ error: '文本长度不能超过 200 字符' });
+
+    const { w, h, sp, fr, tp } = parseRenderParams(req.query);
+    const err = checkBudget(w, h, fr);
+    if (err) return res.status(400).json({ error: err });
+
+    const key = `text_${text}_${w}_${h}_${sp}_${fr}_${tp}`;
+    await handleRender(res, key, text, w, h, sp, fr, tp);
   } catch (err: any) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
@@ -178,21 +194,6 @@ app.post('/api/generate', async (req, res) => {
     const repo = match[2]!.replace(/\.git$/, '');
     const sha = await getRepoShortSHA(owner, repo);
     res.json({ owner, repo, sha, badgeUrl: `/api/badge/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}` });
-  } catch (err: any) { console.error(err); res.status(500).json({ error: err.message }); }
-});
-
-app.get('/api/badge/text/:text', async (req, res) => {
-  try {
-    const text = decodeURIComponent(req.params['text']!).trim();
-    if (text.length < 1) return res.status(400).json({ error: '文本不能为空' });
-    if (text.length > 200) return res.status(400).json({ error: '文本长度不能超过 200 字符' });
-
-    const { w, h, sp, fr, tp } = parseRenderParams(req.query);
-    const err = checkBudget(w, h, fr);
-    if (err) return res.status(400).json({ error: err });
-
-    const key = `text_${text}_${w}_${h}_${sp}_${fr}_${tp}`;
-    await handleRender(res, key, text, w, h, sp, fr, tp);
   } catch (err: any) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
