@@ -6,6 +6,10 @@ document.getElementById('shaBtn').addEventListener('click', previewSHA);
 document.getElementById('shaInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') previewSHA();
 });
+document.getElementById('textBtn').addEventListener('click', previewText);
+document.getElementById('textInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') previewText();
+});
 
 function getOptions() {
   const width = document.getElementById('optWidth').value;
@@ -173,6 +177,40 @@ async function previewSHA() {
       showTimingPanel(previewEl, timing, networkMs);
     }
   } catch {
+    previewEl.innerHTML = '<p style="color:#f85149">生成失败</p>';
+  }
+}
+
+// ─── 任意文字预览 ───
+
+async function previewText() {
+  const text = document.getElementById('textInput').value.trim();
+  if (!text) return;
+
+  const opts = getOptions();
+  const previewEl = document.getElementById('textPreview');
+  const loadingEl = document.getElementById('textLoading');
+  previewEl.innerHTML = '';
+  loadingEl.classList.remove('hidden');
+
+  try {
+    const { blobUrl, timing, networkMs } = await fetchBadge(`/api/badge/text/${encodeURIComponent(text)}${opts}`);
+    loadingEl.classList.add('hidden');
+    const img = document.createElement('img');
+    img.src = blobUrl;
+    img.alt = 'Badge Preview';
+    previewEl.appendChild(img);
+
+    const info = document.createElement('p');
+    info.className = 'sha-info';
+    info.innerHTML = '输入: <code>' + text.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code>';
+    previewEl.appendChild(info);
+
+    if (timing) {
+      showTimingPanel(previewEl, timing, networkMs);
+    }
+  } catch {
+    loadingEl.classList.add('hidden');
     previewEl.innerHTML = '<p style="color:#f85149">生成失败</p>';
   }
 }

@@ -87,6 +87,20 @@
 
     <div id="error" class="error hidden"></div>
 
+    <section class="text-badge">
+      <h3>任意文字生成徽章</h3>
+      <p>输入任意文字（名称、年龄、口号……），生成专属徽章：</p>
+      <div class="input-group">
+        <input type="text" id="textInput" placeholder="输入任意文字，如 冰岩作坊、Alice、42" maxlength="200" />
+        <button id="textBtn">生成</button>
+      </div>
+      <div id="textLoading" class="loading hidden">
+        <div class="spinner"></div>
+        <span>正在生成…</span>
+      </div>
+      <div id="textPreview" class="preview"></div>
+    </section>
+
     <section class="sha-test">
       <h3>SHA 直接预览</h3>
       <p>输入任意十六进制字符串，预览对应的徽章效果：</p>

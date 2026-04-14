@@ -272,6 +272,29 @@ button:active {
   margin-top: 16px;
 }
 
+/* ─── Text Badge ─── */
+
+.text-badge {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid #21262d;
+}
+
+.text-badge h3 {
+  color: #f5aa3f;
+  margin-bottom: 8px;
+}
+
+.text-badge p {
+  font-size: 0.9em;
+  color: #8b949e;
+  margin-bottom: 12px;
+}
+
+#textPreview img {
+  margin-top: 16px;
+}
+
 /* ─── Timing Panel ─── */
 
 .timing-panel {

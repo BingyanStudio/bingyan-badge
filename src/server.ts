@@ -181,5 +181,20 @@ app.post('/api/generate', async (req, res) => {
   } catch (err: any) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
+app.get('/api/badge/text/:text', async (req, res) => {
+  try {
+    const text = decodeURIComponent(req.params['text']!).trim();
+    if (text.length < 1) return res.status(400).json({ error: '文本不能为空' });
+    if (text.length > 200) return res.status(400).json({ error: '文本长度不能超过 200 字符' });
+
+    const { w, h, sp, fr, tp } = parseRenderParams(req.query);
+    const err = checkBudget(w, h, fr);
+    if (err) return res.status(400).json({ error: err });
+
+    const key = `text_${text}_${w}_${h}_${sp}_${fr}_${tp}`;
+    await handleRender(res, key, text, w, h, sp, fr, tp);
+  } catch (err: any) { console.error(err); res.status(500).json({ error: err.message }); }
+});
+
 logStartup();
 app.listen(PORT, () => { console.log(`Bingyan Badge 运行于 http://localhost:${PORT}`); });
