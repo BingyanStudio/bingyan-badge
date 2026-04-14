@@ -54,7 +54,7 @@ export async function renderBadge(sha: string, options: RenderOptions = {}): Pro
     height = 256,
     frames = 30,
     delay = 50,
-    quality = 10,
+    quality = 20,
     transparent = true,
   } = options;
 
@@ -70,7 +70,7 @@ export async function renderBadge(sha: string, options: RenderOptions = {}): Pro
   const pipelineBuildMs = performance.now() - buildStart;
 
   const framesStart = performance.now();
-  const encoder = new GIFEncoder(width, height, 'octree', true);
+  const encoder = new GIFEncoder(width, height, 'neuquant', true);
   encoder.setDelay(delay);
   encoder.setRepeat(0);
   encoder.setQuality(quality);
