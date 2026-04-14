@@ -64,8 +64,8 @@ async function main() {
   console.log(`\nBrightness audit: ${darkCount} / ${testShas.length} too dark (< 15)`);
 
   // Determinism
-  const gif1 = await renderBadge(svgBuf, 'abc1234', { width: 64, height: 64, frames: 5 });
-  const gif2 = await renderBadge(svgBuf, 'abc1234', { width: 64, height: 64, frames: 5 });
+  const gif1 = await renderBadge('abc1234', { width: 64, height: 64, frames: 5 });
+  const gif2 = await renderBadge('abc1234', { width: 64, height: 64, frames: 5 });
   console.log('Deterministic:', Buffer.compare(gif1, gif2) === 0);
 
   // Loop test

@@ -1,8 +1,7 @@
-import sharp from 'sharp';
 import GIFEncoder from 'gif-encoder-2';
 import { ScalarField } from './fields.js';
 import { createRNG } from './rng.js';
-import { buildGeometry, applyMask } from './path-engine.js';
+import { buildGeometry } from './path-engine.js';
 import { buildPipeline } from './pipeline.js';
 import type { RenderOptions, PipelineContext, Geometry } from './types.js';
 import { TRANSPARENT_COLOR_INT } from '../components/color/compose.js';
@@ -17,24 +16,13 @@ export function clearGeoCache(): void {
   geoCache.clear();
 }
 
-async function getGeometry(svgBuffer: Buffer, width: number, height: number): Promise<Geometry> {
+function getGeometry(width: number, height: number): Geometry {
   const key = `${width}x${height}`;
   const cached = geoCache.get(key);
   if (cached) return cached;
 
+  // path-engine 的 nonzero winding number 对此 SVG 路径足够精确，无需 sharp 光栅化校验
   const geo = buildGeometry(SVG_PATH, VIEW_BOX, TRANSFORM, width, height);
-
-  const { data } = await sharp(svgBuffer)
-    .resize(width, height, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  const externalMask = new Uint8Array(width * height);
-  for (let i = 0; i < width * height; i++) {
-    externalMask[i] = data[i * 4 + 3]! > 10 ? 1 : 0;
-  }
-  applyMask(geo, externalMask);
 
   if (geoCache.size > 10) {
     const oldest = geoCache.keys().next().value!;
@@ -44,7 +32,7 @@ async function getGeometry(svgBuffer: Buffer, width: number, height: number): Pr
   return geo;
 }
 
-export async function renderBadge(svgBuffer: Buffer, sha: string, options: RenderOptions = {}): Promise<Buffer> {
+export async function renderBadge(sha: string, options: RenderOptions = {}): Promise<Buffer> {
   const {
     width = 256,
     height = 256,
@@ -54,7 +42,7 @@ export async function renderBadge(svgBuffer: Buffer, sha: string, options: Rende
     transparent = true,
   } = options;
 
-  const geo = await getGeometry(svgBuffer, width, height);
+  const geo = getGeometry(width, height);
   const rng = createRNG(sha);
   const pipeline = buildPipeline(rng);
 
