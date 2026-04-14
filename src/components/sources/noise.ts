@@ -10,7 +10,7 @@ const component: Component<P> = {
   type: ComponentType.SOURCE,
   params: {
     scale: { type: 'float', min: 1, max: 12, default: 4 },
-    octaves: { type: 'int', min: 1, max: 6, default: 4 },
+    octaves: { type: 'int', min: 1, max: 4, default: 3 },
     seed: { type: 'int', min: 0, max: 99999, default: 0 },
     scrollX: { type: 'float', min: -5, max: 5, default: 0 },
     scrollY: { type: 'float', min: -5, max: 5, default: 0 },

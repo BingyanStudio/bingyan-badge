@@ -28,55 +28,47 @@ const component: Component<P> = {
   create({ bleed, pigment, paperGrain, seed, animate, animMode = AnimMode.OSCILLATE }) {
     return (ctx: PipelineContext, input: ColorField) => {
       const { width: w, height: h } = input;
-
-      const spread = new ColorField(w, h);
       const radius = Math.ceil(bleed);
       const phase = loopValue(ctx.t, animMode) * animate;
 
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          const i = y * w + x;
-
-          const lumC = input.r[i]! * 0.3 + input.g[i]! * 0.6 + input.b[i]! * 0.1;
-          let lumR = lumC, lumD = lumC;
-          if (x < w - 1) { const j = i + 1; lumR = input.r[j]! * 0.3 + input.g[j]! * 0.6 + input.b[j]! * 0.1; }
-          if (y < h - 1) { const j = i + w; lumD = input.r[j]! * 0.3 + input.g[j]! * 0.6 + input.b[j]! * 0.1; }
-          const gradMag = Math.abs(lumR - lumC) + Math.abs(lumD - lumC);
-
-          const diffuseStr = bleed * Math.exp(-gradMag * 8);
-
-          const noiseAngle = fbm(x / w * 3 + phase, y / h * 3, 2, seed) * Math.PI * 2;
-          const offsetX = Math.cos(noiseAngle) * diffuseStr;
-          const offsetY = Math.sin(noiseAngle) * diffuseStr;
-
-          let sumR = 0, sumG = 0, sumB = 0, sumW = 0;
-          for (let dy = -radius; dy <= radius; dy++) {
-            for (let dx = -radius; dx <= radius; dx++) {
-              const sx = Math.max(0, Math.min(w - 1, Math.round(x + dx + offsetX * dx / (radius || 1))));
-              const sy = Math.max(0, Math.min(h - 1, Math.round(y + dy + offsetY * dy / (radius || 1))));
-              const dist = Math.sqrt(dx * dx + dy * dy);
-              if (dist > radius) continue;
-              const weight = Math.exp(-dist * dist / (diffuseStr * diffuseStr + 0.1));
-              const j = sy * w + sx;
-              sumR += input.r[j]! * weight;
-              sumG += input.g[j]! * weight;
-              sumB += input.b[j]! * weight;
-              sumW += weight;
-            }
-          }
-
-          if (sumW > 0) {
-            spread.r[i] = sumR / sumW;
-            spread.g[i] = sumG / sumW;
-            spread.b[i] = sumB / sumW;
-          } else {
-            spread.r[i] = input.r[i]!;
-            spread.g[i] = input.g[i]!;
-            spread.b[i] = input.b[i]!;
+      // Separable box blur (O(n) per pixel instead of O(radius^2))
+      const blurChannel = (src: Float32Array): Float32Array => {
+        const tmp = new Float32Array(w * h);
+        const out = new Float32Array(w * h);
+        const diam = radius * 2 + 1;
+        const inv = 1 / diam;
+        // Horizontal pass
+        for (let y = 0; y < h; y++) {
+          let sum = 0;
+          for (let x = -radius; x <= radius; x++)
+            sum += src[y * w + Math.max(0, Math.min(w - 1, x))]!;
+          tmp[y * w] = sum * inv;
+          for (let x = 1; x < w; x++) {
+            sum += src[y * w + Math.min(w - 1, x + radius)]!;
+            sum -= src[y * w + Math.max(0, x - radius - 1)]!;
+            tmp[y * w + x] = sum * inv;
           }
         }
-      }
+        // Vertical pass
+        for (let x = 0; x < w; x++) {
+          let sum = 0;
+          for (let y = -radius; y <= radius; y++)
+            sum += tmp[Math.max(0, Math.min(h - 1, y)) * w + x]!;
+          out[x] = sum * inv;
+          for (let y = 1; y < h; y++) {
+            sum += tmp[Math.min(h - 1, y + radius) * w + x]!;
+            sum -= tmp[Math.max(0, y - radius - 1) * w + x]!;
+            out[y * w + x] = sum * inv;
+          }
+        }
+        return out;
+      };
 
+      const spreadR = blurChannel(input.r);
+      const spreadG = blurChannel(input.g);
+      const spreadB = blurChannel(input.b);
+
+      // Edge darkening + paper grain
       const c = new ColorField(w, h);
       const frame = Math.floor(ctx.t * 30 * animate);
 
@@ -84,16 +76,16 @@ const component: Component<P> = {
         for (let x = 0; x < w; x++) {
           const i = y * w + x;
 
-          const diffR = Math.abs(spread.r[i]! - input.r[i]!);
-          const diffG = Math.abs(spread.g[i]! - input.g[i]!);
-          const diffB = Math.abs(spread.b[i]! - input.b[i]!);
+          const diffR = Math.abs(spreadR[i]! - input.r[i]!);
+          const diffG = Math.abs(spreadG[i]! - input.g[i]!);
+          const diffB = Math.abs(spreadB[i]! - input.b[i]!);
           const edgeDark = (diffR + diffG + diffB) * pigment;
 
           const paper = 1 - paperGrain * (hash(x, y, seed + 7777 + frame) - 0.5) * 2;
 
-          c.r[i] = Math.max(0, Math.min(1, (spread.r[i]! - edgeDark) * paper));
-          c.g[i] = Math.max(0, Math.min(1, (spread.g[i]! - edgeDark) * paper));
-          c.b[i] = Math.max(0, Math.min(1, (spread.b[i]! - edgeDark) * paper));
+          c.r[i] = Math.max(0, Math.min(1, (spreadR[i]! - edgeDark) * paper));
+          c.g[i] = Math.max(0, Math.min(1, (spreadG[i]! - edgeDark) * paper));
+          c.b[i] = Math.max(0, Math.min(1, (spreadB[i]! - edgeDark) * paper));
         }
       }
 

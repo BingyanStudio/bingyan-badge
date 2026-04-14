@@ -30,13 +30,13 @@ const component: Component<P> = {
           let py = y / h * scale;
 
           for (let it = 0; it < iterations; it++) {
-            const ox = fbm(px + ta, py + 1.7 * it, 4, seed + it * 100) * warpStrength;
-            const oy = fbm(px + 5.2 * it + tb, py, 4, seed + it * 100 + 50) * warpStrength;
+            const ox = fbm(px + ta, py + 1.7 * it, 3, seed + it * 100) * warpStrength;
+            const oy = fbm(px + 5.2 * it + tb, py, 3, seed + it * 100 + 50) * warpStrength;
             px += ox;
             py += oy;
           }
 
-          f.data[y * w + x] = fbm(px, py, 4, seed + 999);
+          f.data[y * w + x] = fbm(px, py, 3, seed + 999);
         }
       }
       return f;
