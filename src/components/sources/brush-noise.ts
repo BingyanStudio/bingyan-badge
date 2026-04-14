@@ -55,7 +55,7 @@ const component: Component<P> = {
             val += amp * fbm(
               sx * lScale + phX,
               sy * lScale + phY,
-              3, seed + l * 1000
+              4, seed + l * 1000
             );
             totalAmp += amp;
             amp *= 0.5;

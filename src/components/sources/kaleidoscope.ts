@@ -69,7 +69,7 @@ const component: Component<P> = {
               break;
             }
             default: { // noise
-              val = fbm(sx + noiseOffX, sy + noiseOffY, 3, seed);
+              val = fbm(sx + noiseOffX, sy + noiseOffY, 4, seed);
               break;
             }
           }

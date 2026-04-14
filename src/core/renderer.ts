@@ -52,8 +52,8 @@ export async function renderBadge(sha: string, options: RenderOptions = {}): Pro
   const {
     width = 256,
     height = 256,
-    frames = 30,
-    delay = 50,
+    frames = 60,
+    delay = 70,
     quality = 20,
     transparent = true,
   } = options;

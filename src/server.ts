@@ -95,7 +95,7 @@ function parseRenderParams(query: Record<string, unknown>) {
   const w = intParam(query['width'], 256, 32, 384);
   const h = intParam(query['height'], 256, 32, 384);
   const sp = intParam(query['speed'], 50, 20, 200);
-  const fr = intParam(query['frames'], 30, 10, 60);
+  const fr = intParam(query['frames'], 60, 10, 60);
   const tp = boolParam(query['transparent'], true);
   return { w, h, sp, fr, tp };
 }
